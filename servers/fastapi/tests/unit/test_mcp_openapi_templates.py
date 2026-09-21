@@ -13,7 +13,12 @@ def test_default_templates_match_supported_builtin_groups():
         "modern",
         "standard",
         "swift",
+        "civic",
         "editorial",
+        "horizon",
+        "mosaic",
+        "pulse",
+        "verdant",
     ]
 
 

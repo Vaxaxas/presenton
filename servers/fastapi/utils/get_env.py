@@ -33,6 +33,14 @@ def get_presentation_generation_mode() -> PresentationGenerationMode:
     return "both"
 
 
+def is_community_enabled() -> bool:
+    """Return whether cloud-backed community features are available."""
+    value = (os.getenv("PRESENTON_COMMUNITY_ENABLED") or "").strip().lower()
+    if not value:
+        return True
+    return value not in {"0", "false", "no", "off"}
+
+
 def get_database_url_env():
     return os.getenv("DATABASE_URL")
 
@@ -442,7 +450,7 @@ def get_codex_model_env():
 
 
 def get_migrate_database_on_startup_env():
-    return os.getenv("MIGRATE_DATABASE_ON_STARTUP")
+    return os.getenv("MIGRATE_DATABASE_ON_STARTUP", "true")
 
 
 def get_sentry_dsn_env():

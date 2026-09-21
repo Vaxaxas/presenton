@@ -123,6 +123,7 @@ from utils.llm_calls.generate_smart_presentation import (
     generate_smart_presentation,
     resolve_smart_slide_count,
 )
+from utils.get_env import is_community_enabled
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -625,17 +626,22 @@ def _apply_template_content_to_element(
     has_value = False
     value = None
     if name:
-        if preferred_content_keys is None and name_occurrences is not None:
-            preferred_content_keys = _template_repeated_content_keys_for_name(
-                name,
+        if direct_value and element_type in {"container", "flex", "grid", "group"}:
+            if name in content_values:
+                has_value = True
+                value = content_values[name]
+        else:
+            if preferred_content_keys is None and name_occurrences is not None:
+                preferred_content_keys = _template_repeated_content_keys_for_name(
+                    name,
+                    content_values,
+                    name_occurrences,
+                )
+            has_value, value = _template_content_value(
                 content_values,
-                name_occurrences,
+                name,
+                preferred_keys=preferred_content_keys,
             )
-        has_value, value = _template_content_value(
-            content_values,
-            name,
-            preferred_keys=preferred_content_keys,
-        )
 
     if (
         element.get("decorative") is False
@@ -1136,11 +1142,14 @@ def _template_text_runs_from_markdown(
 ) -> list[dict[str, Any]]:
     if parse_latex_tags(text) is not None or (
         isinstance(first_run, dict) and first_run.get("type") == "latex"
+    ) or (
+        text.startswith("**") and text.find("**", 2) == -1
     ):
         return replace_text_runs(
             [first_run] if isinstance(first_run, dict) else None,
             text,
             fallback_font,
+            parse_markdown_bold=True,
         )
 
     base_run = copy.deepcopy(first_run) if isinstance(first_run, dict) else {}
@@ -1650,6 +1659,11 @@ async def create_presentation(
     )
 
     normalized_community_ids = normalize_community_ids(community_design_ids)
+    if normalized_community_ids and not is_community_enabled():
+        raise HTTPException(
+            status_code=422,
+            detail="Community references are disabled",
+        )
     if generation_mode != "smart" and normalized_community_ids:
         raise HTTPException(
             status_code=400,
