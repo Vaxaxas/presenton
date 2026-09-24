@@ -99,14 +99,7 @@ const AdvanceSettings = ({
                         )}
                         data-testid="advanced-settings-button"
                     >
-                        <SlidersHorizontal
-                            className={cn(
-                                compact
-                                    ? "h-3.5 w-3.5"
-                                    : "h-3.5 w-3.5 min-[1800px]:h-4 min-[1800px]:w-4 min-[2200px]:h-5 min-[2200px]:w-5"
-                            )}
-                            aria-hidden="true"
-                        />
+                        <SlidersHorizontal className={cn("h-3.5 w-3.5", !compact && "min-[1800px]:h-4 min-[1800px]:w-4 min-[2200px]:h-5 min-[2200px]:w-5")} aria-hidden="true" />
                     </button>
                 </ToolTip>
             </div>

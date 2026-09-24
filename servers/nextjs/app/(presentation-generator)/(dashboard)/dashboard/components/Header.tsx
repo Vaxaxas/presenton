@@ -6,9 +6,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import { ArrowLeft } from "lucide-react";
+import CurrentConfig from "@/app/(presentation-generator)/upload/components/CurrentConfig";
 
 const PATHS_WITH_HEADER_BACK = [
-  "/upload",
   "/outline",
   "/documents-preview",
   "/template-preview",
@@ -20,6 +20,7 @@ function pathMatches(pathname: string | null, base: string) {
 
 const Header = () => {
   const pathname = usePathname();
+  const isGeneratePage = pathname === "/upload";
   const showHeaderBack = PATHS_WITH_HEADER_BACK.some((p) => pathMatches(pathname, p));
 
   const backToUpload =
@@ -34,14 +35,14 @@ const Header = () => {
       : "BACK";
 
   return (
-    <div className="w-full   sticky top-0 z-50 py-7 "
+    <div className={`w-full sticky top-0 z-50 ${isGeneratePage ? "py-3" : "py-7"}`}
       style={{
         background: "linear-gradient(180deg, #FFF 0%, rgba(255, 255, 255, 0.00) 110.67%)",
 
       }}
     >
       <Wrapper className="px-5 sm:px-10 lg:px-20">
-        <div className="flex items-center justify-between py-1">
+        <div className={`flex items-center justify-between ${isGeneratePage ? "py-0" : "py-1"}`}>
           <div className="flex items-center gap-3">
             <Link href="/dashboard" onClick={() => trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/dashboard" })}>
               <img
@@ -52,7 +53,9 @@ const Header = () => {
             </Link>
           </div>
           <div className="flex items-center">
-            {showHeaderBack ? (
+            {isGeneratePage ? (
+              <CurrentConfig />
+            ) : showHeaderBack ? (
               <Link
                 href={backHref}
                 className="text-[#333333] text-xs font-syne font-semibold flex items-center gap-2"

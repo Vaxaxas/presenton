@@ -27,7 +27,7 @@ import { sanitizeAnalyticsError } from "@/utils/analytics";
 import { ConfigurationSelects } from "./ConfigurationSelects";
 import { RootState } from "@/store/store";
 import { ImagesApi } from "../../services/api/images";
-import CurrentConfig from "./CurrentConfig";
+import InspirationPrompts from "./InspirationPrompts";
 import { LLMConfig } from "@/types/llm_config";
 import {
   clampSlideCountValue,
@@ -162,7 +162,7 @@ const UploadPage = ({
     getInitialGenerationMode(presentationGenerationMode),
   );
   const [config, setConfig] = useState<PresentationConfig>({
-    slides: null,
+    slides: "1",
     language: LanguageType.Auto,
     prompt: "",
     tone: ToneType.Default,
@@ -612,11 +612,8 @@ const UploadPage = ({
         duration={loadingState.duration}
         extra_info={loadingState.extra_info}
       />
-      <div className="mx-auto mb-8 max-w-[760px] space-y-[18px] px-4 lg:max-w-[780px] xl:max-w-[900px] min-[1600px]:max-w-[1050px] min-[1920px]:max-w-[1280px]">
-        <div className="flex min-h-[34px] w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            <CurrentConfig webSearchEnabled={config.webSearch} />
-          </div>
+      <div className="mx-auto w-full max-w-[710px] space-y-[14px] px-4 sm:px-0">
+        <div className="flex min-h-[62px] w-full items-end">
           <ConfigurationSelects
             compact
             mode={generationMode}
@@ -656,8 +653,14 @@ const UploadPage = ({
 
       </div>
 
+      {generationMode === "standard" && (
+        <div className="mx-auto mt-[92px] w-full max-w-[700px] px-4 sm:px-0">
+          <InspirationPrompts onSelect={(prompt) => handleConfigChange("prompt", prompt)} />
+        </div>
+      )}
+
       {communityEnabled && generationMode === "smart" && (
-        <div className="px-4 sm:px-6">
+        <div className="mx-auto mt-[92px] w-full max-w-[1326px] px-4 sm:px-6">
           <CommunityReferencePicker
             selectedId={communityReference?.id ?? null}
             onSelect={(presentation) =>

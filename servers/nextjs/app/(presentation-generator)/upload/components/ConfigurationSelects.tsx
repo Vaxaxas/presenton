@@ -2,11 +2,11 @@ import { LanguageType, PresentationConfig } from "../type";
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
-  ChevronDown,
   ChevronRight,
   ChevronUp,
   Languages,
   Monitor,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   Command,
@@ -28,7 +28,6 @@ import {
   clampSlideCountValue,
   MAX_NUMBER_OF_SLIDES,
 } from "@/utils/presentationLimits";
-import { Button } from "@/components/ui/button";
 import GenerationModeDialog from "./GenerationModeDialog";
 import type { GenerationMode } from "@/utils/presentationGenerationMode";
 
@@ -116,7 +115,7 @@ const SlideCountSelect: React.FC<{
     }
   };
 
-  const displayLabel = value ? `${value} slides` : "Auto slides";
+  const displayLabel = value ? `Slides ${value}` : "Auto slides";
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -135,11 +134,7 @@ const SlideCountSelect: React.FC<{
           )}
         >
           {compact ? (
-            <Monitor
-              aria-hidden="true"
-              strokeWidth={1.75}
-              className="h-3.5 w-3.5 shrink-0"
-            />
+            <Monitor className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
           ) : (
             <svg
               className="h-3.5 w-3.5 min-[1800px]:h-4 min-[1800px]:w-4 min-[2200px]:h-5 min-[2200px]:w-5"
@@ -176,14 +171,10 @@ const SlideCountSelect: React.FC<{
                   : "text-xs font-medium min-[1800px]:text-sm min-[2200px]:text-base",
               )}
             >
-              {compact && value ? `Slides ${value}` : displayLabel}
+              {displayLabel}
             </span>
             {compact && (
-              <ChevronUp
-                aria-hidden="true"
-                strokeWidth={1.75}
-                className="h-3.5 w-3.5 shrink-0 rotate-90"
-              />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
             )}
           </span>
           {!compact && (
@@ -298,16 +289,7 @@ const LanguageSelect: React.FC<{
             : "shadow-sm ring-1 ring-inset ring-slate-200 min-[1800px]:h-10 min-[1800px]:max-w-[190px] min-[1800px]:px-4 min-[2200px]:h-11 min-[2200px]:max-w-[220px] min-[2200px]:px-5",
         )}
       >
-        <Languages
-          aria-hidden="true"
-          strokeWidth={compact ? 1.75 : 2}
-          className={cn(
-            "shrink-0",
-            compact
-              ? "h-3.5 w-3.5"
-              : "h-3.5 w-3.5 min-[1800px]:h-4 min-[1800px]:w-4 min-[2200px]:h-5 min-[2200px]:w-5",
-          )}
-        />
+        <Languages className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
         <span
           className={cn(
             "flex min-w-0 flex-1 items-center",
@@ -325,11 +307,7 @@ const LanguageSelect: React.FC<{
             {value || "Select language"}
           </span>
           {compact && (
-            <ChevronUp
-              aria-hidden="true"
-              strokeWidth={1.75}
-              className="h-3.5 w-3.5 shrink-0 rotate-90"
-            />
+            <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
           )}
         </span>
         {!compact && (
@@ -392,24 +370,28 @@ export function ConfigurationSelects({
   return (
     <div
       className={cn(
-        "order-1 flex flex-wrap items-center",
+        "flex w-full flex-wrap items-end justify-between",
         compact ? "gap-3" : "gap-4 min-[1800px]:gap-5",
       )}
     >
       {showMode ? (
-        <Button
-          type="button"
-          onClick={() => setModeDialogOpen(true)}
-          className={cn(
-            "rounded-full border border-[#EDEEEF] bg-white px-4 py-1 font-syne text-sm font-medium text-[#101323] hover:bg-white",
-            compact ? "h-[34px] shadow-none" : "h-[38px] shadow-sm",
-          )}
-        >
-          {mode === "standard" ? "Standard" : "Smart"}
-          <ChevronUp className="h-4 w-4" />
-        </Button>
+        <div className="flex flex-col gap-2">
+          <button type="button" onClick={() => setModeDialogOpen(true)} className="flex items-center gap-1.5 font-syne text-[13px] text-[#4C4C4C]">
+            <img src="/figma/generate/info.svg" alt="" className="h-4 w-4" />
+            <span>Presentation Mode</span>
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+          </button>
+          <div className="flex h-[36px] items-center rounded-xl border border-[#EDEEEF] bg-white p-1" role="group" aria-label="Presentation Mode">
+            {(["smart", "standard"] as const).map((option) => (
+              <button key={option} type="button" onClick={() => onModeChange?.(option)} aria-pressed={mode === option} className={cn("h-[28px] w-[90px] rounded-lg font-manrope text-[13px] font-medium text-[#191919]", mode === option && "bg-[#F6F6F9]")}>
+                {option === "smart" ? "Smart" : "Standard"}
+              </button>
+            ))}
+          </div>
+        </div>
       ) : null}
 
+      <div className="flex flex-wrap items-center gap-3">
       <SlideCountSelect
         value={config.slides}
         onValueChange={(value) => onConfigChange("slides", value)}
@@ -429,6 +411,7 @@ export function ConfigurationSelects({
         onConfigChange={onConfigChange}
         compact={compact}
       />
+      </div>
       {showMode ? (
         <GenerationModeDialog
           open={modeDialogOpen}

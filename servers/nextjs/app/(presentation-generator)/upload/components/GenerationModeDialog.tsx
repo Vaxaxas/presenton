@@ -1,8 +1,8 @@
 "use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { useState } from "react";
+import { Check } from "lucide-react";
 import type { GenerationMode } from "@/utils/presentationGenerationMode";
 
 type GenerationModeDialogProps = {
@@ -11,11 +11,30 @@ type GenerationModeDialogProps = {
   onSelect: (mode: GenerationMode) => void;
 };
 
-export default function GenerationModeDialog({
-  open,
-  onOpenChange,
-  onSelect,
-}: GenerationModeDialogProps) {
+const MODES = [
+  {
+    value: "standard" as const,
+    eyebrow: "YOUR CONTENT, YOUR TEMPLATE",
+    label: "Standard mode",
+    description: "places your text and images into the template you choose. The slide layout stays consistent as your content changes.",
+    benefits: ["Uses built-in or custom templates", "Follows the template’s fixed layout"],
+    checkColor: "text-[#01A8F2]",
+    video: "/Standard.mp4",
+  },
+  {
+    value: "smart" as const,
+    eyebrow: "DESIGNED AROUND YOUR CONTENT",
+    label: "Smart mode",
+    description: "arranges your text and images to suit each slide. The layout can change depending on what you want to present.",
+    benefits: ["Creates layouts around your content", "Adapts text and image placement"],
+    checkColor: "text-[#5F48F3]",
+    video: "/Smart.mp4",
+  },
+];
+
+export default function GenerationModeDialog({ open, onOpenChange, onSelect }: GenerationModeDialogProps) {
+  const [hovered, setHovered] = useState<GenerationMode | null>(null);
+
   const selectMode = (mode: GenerationMode) => {
     onSelect(mode);
     onOpenChange(false);
@@ -24,118 +43,48 @@ export default function GenerationModeDialog({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[#101828]/45 backdrop-blur-[2px]" />
-        <div
-          className="p-2"
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <DialogPrimitive.Content
-            className="relative overflow-y-auto rounded-[24px] border border-[#EDEEEF] bg-white p-0 shadow-[0_24px_80px_rgba(15,23,42,0.24)] sm:rounded-[40px]"
-            style={{
-              width: "calc(100% - 1rem)",
-              maxWidth: "850px",
-              maxHeight: "calc(100dvh - 1rem)",
-              pointerEvents: "auto",
-            }}
-          >
-            <DialogPrimitive.Description className="sr-only">
-              Choose Standard mode for fixed layouts or Smart mode for adaptive
-              layouts.
-            </DialogPrimitive.Description>
-            <div className="sticky top-0 z-10 border-b border-[#EDEEEF] bg-[#F9FAFB] px-4 py-4 sm:px-8">
-              <DialogPrimitive.Title className="text-xl font-medium tracking-[-0.2px] text-[#808080]">
-                Select Mode
-              </DialogPrimitive.Title>
-              <DialogPrimitive.Close className="absolute right-4 top-5 sm:right-8">
-                <X className="h-5 w-5 text-[#808080]" />
-              </DialogPrimitive.Close>
-            </div>
-
-        <div className="p-3 sm:p-5">
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div>
-              <div className="pb-2.5">
-                <div className="aspect-[4/3] w-full overflow-hidden rounded-[18px] border border-[#EDEEEF] bg-white">
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/30" />
+        <DialogPrimitive.Content className="fixed left-1/2 top-1/2 z-[61] w-[min(820px,calc(100vw-32px))] max-h-[calc(100dvh-32px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto outline-none">
+          <DialogPrimitive.Title className="sr-only">Choose a presentation mode</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">Choose Standard mode for a fixed template or Smart mode for layouts adapted to your content.</DialogPrimitive.Description>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2" onMouseLeave={() => setHovered(null)}>
+            {MODES.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => selectMode(item.value)}
+                onMouseEnter={() => setHovered(item.value)}
+                aria-label={`Choose ${item.label}`}
+                className={`overflow-hidden rounded-xl bg-white text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7A5AF8] ${hovered === item.value ? "shadow-[0_4px_18px_rgba(0,0,0,0.37),0_4px_24px_rgba(0,0,0,0.04)]" : ""} ${hovered && hovered !== item.value ? "[&>span:last-child]:opacity-70" : ""}`}
+              >
+                <span className={`block h-[300px] w-full overflow-hidden ${item.value === "standard" ? "bg-[#F7F7FF]" : ""}`} style={item.value === "smart" ? { background: "linear-gradient(55deg, #FFE9DD 0%, #FFF7FC 47%, #E8E7FF 100%)" } : undefined}>
                   <video
-                    src="/Standard.mp4"
+                    src={item.video}
                     autoPlay
                     muted
                     loop
                     playsInline
+                    preload="metadata"
+                    aria-hidden="true"
                     className="h-full w-full object-cover"
                   />
-                </div>
-              </div>
-              <div className="rounded-[20px] border border-[#EBE9FE] bg-[#F4F3FF] px-3.5 pb-5 pt-3.5">
-                <div className="flex items-center justify-between border-b border-[#EBE9FE] pb-3.5">
-                  <p className="text-xl font-medium text-[#333333]">Standard</p>
-                  <p className="text-[10px] font-medium text-[#6938EF]">
-                    Fixed layout
-                  </p>
-                </div>
-                <p className="mb-2 py-1.5 text-base font-medium text-[#666666]">
-                  A rigid, predefined layout with fixed structure, ensuring
-                  consistency, clarity, and predictable results.
-                </p>
-                <Button
-                  type="button"
-                  className="rounded-[80px] bg-[#7A5AF8] px-5 text-base font-medium text-white shadow-none hover:bg-[#6938EF]/90"
-                  onClick={() => selectMode("standard")}
-                >
-                  Select Standard
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <div className="pb-2.5">
-                <div className="aspect-[4/3] w-full overflow-hidden rounded-[18px] border border-[#EDEEEF] bg-white">
-                  <video
-                    src="/Smart.mp4"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
-              <div className="rounded-[20px] border border-[#EBE9FE] bg-[#F4F3FF] px-3.5 pb-5 pt-3.5">
-                <div className="flex items-center justify-between border-b border-[#EBE9FE] pb-3.5">
-                  <p className="text-xl font-medium text-[#333333]">Smart</p>
-                  <p className="text-[10px] font-medium text-[#6938EF]">
-                    Flexible layout
-                  </p>
-                </div>
-                <p className="mb-2 py-1.5 text-base font-medium text-[#666666]">
-                  A smart adaptive layout with flexible structure, balancing
-                  consistency and content.
-                </p>
-                <Button
-                  type="button"
-                  className="h-auto min-h-10 rounded-[80px] px-5 text-base font-medium text-[#101323] shadow-none"
-                  style={{
-                    background:
-                      "linear-gradient(270deg, #D5CAFC 2.4%, #E3D2EB 27.88%, #F4DCD3 69.23%, #FDE4C2 100%)",
-                  }}
-                  onClick={() => selectMode("smart")}
-                >
-                  Select Smart
-                </Button>
-              </div>
-            </div>
+                </span>
+                <span className="flex h-[218px] flex-col gap-[18px] p-[22px]">
+                  <span className="font-manrope text-xs font-semibold tracking-[0.1em] text-[#666666]">{item.eyebrow}</span>
+                  <span className="block font-manrope text-sm font-medium leading-[22px] tracking-[0.02em] text-[#333333]">
+                    <span className={`mr-2 inline-block rounded-full px-[11px] py-[2px] text-[12px] font-semibold leading-[17px] ${item.value === "standard" ? "bg-[#F4FBFE] text-[#01A8F2]" : "bg-[#EFEDFE] text-[#5F48F3]"}`}>{item.label}</span>
+                    {item.description}
+                  </span>
+                  <span className="mt-auto flex flex-col gap-2 font-syne text-sm text-[#333333]">
+                    <span className="flex items-center gap-1"><Check className={`h-3.5 w-3.5 ${item.checkColor}`} strokeWidth={2} aria-hidden="true" />{item.benefits[0]}</span>
+                    <span className="h-px w-full bg-[#EDEEEF]" aria-hidden="true" />
+                    <span className="flex items-center gap-[7px]"><Check className={`h-3.5 w-3.5 ${item.checkColor}`} strokeWidth={2} aria-hidden="true" />{item.benefits[1]}</span>
+                  </span>
+                </span>
+              </button>
+            ))}
           </div>
-        </div>
-          </DialogPrimitive.Content>
-        </div>
+        </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
   );
