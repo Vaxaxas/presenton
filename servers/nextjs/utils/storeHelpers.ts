@@ -2,6 +2,7 @@ import { setLLMConfig } from "@/store/slices/userConfig";
 import { store } from "@/store/store";
 import { LLMConfig } from "@/types/llm_config";
 import { isSupportedCodexModel } from "@/utils/codexModels";
+import { isSupportedAntigravityModel } from "@/utils/antigravityModels";
 
 function isProvided(value: unknown): boolean {
   return value !== "" && value !== null && value !== undefined;
@@ -245,6 +246,13 @@ export const getLLMConfigValidationError = (
     if (!isSupportedCodexModel(llmConfig.CODEX_MODEL)) {
       return "Select a supported Codex model.";
     }
+  } else if (llm === "antigravity") {
+    if (!isProvided(llmConfig.ANTIGRAVITY_MODEL)) {
+      return "Select an Antigravity model.";
+    }
+    if (!isSupportedAntigravityModel(llmConfig.ANTIGRAVITY_MODEL)) {
+      return "Select a supported Antigravity model.";
+    }
   } else {
     return "Unsupported or unknown text provider.";
   }
@@ -280,6 +288,8 @@ export const getLLMConfigValidationError = (
         if (!isProvided(llmConfig.GOOGLE_API_KEY)) {
           return "Google API key is required for NanoBanana Pro.";
         }
+        break;
+      case "antigravity":
         break;
       case "comfyui":
         if (!isProvided(llmConfig.COMFYUI_URL)) {
@@ -330,6 +340,7 @@ export const getLLMConfigValidationError = (
           return "Brave Search API key is required.";
         }
         break;
+      case "antigravity":
       case "auto":
         break;
       default:
@@ -381,6 +392,28 @@ export function syncStoreAfterCodexSignOut(): void {
       CODEX_IS_PRO: false,
     })
   );
+}
+
+/** Keep Redux in sync when Antigravity signs out so guards observe cleared ANTIGRAVITY_MODEL. */
+export function syncStoreAfterAntigravitySignOut(): void {
+  const prev = store.getState().userConfig.llm_config;
+  store.dispatch(
+    setLLMConfig({
+      ...prev,
+      LLM: "antigravity",
+      ANTIGRAVITY_MODEL: "",
+      ANTIGRAVITY_ACCESS_TOKEN: "",
+      ANTIGRAVITY_REFRESH_TOKEN: "",
+      ANTIGRAVITY_TOKEN_EXPIRES: "",
+      ANTIGRAVITY_EMAIL: "",
+      ANTIGRAVITY_NAME: "",
+      ANTIGRAVITY_PROJECT_ID: "",
+    })
+  );
+}
+
+export function isAntigravityMissingSelectedModel(llmConfig: LLMConfig): boolean {
+  return llmConfig.LLM === "antigravity" && !isProvided(llmConfig.ANTIGRAVITY_MODEL);
 }
 
 /** Clear the stale cloud selection immediately after Presenton is disconnected. */

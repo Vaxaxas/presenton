@@ -282,7 +282,7 @@ function installRuntime(version, archivePath) {
       "--cache",
       path.join(cacheDir, "npm"),
     ],
-    { cwd: targetRoot, stdio: "inherit" },
+    { cwd: targetRoot, stdio: "inherit", shell: process.platform === "win32" },
   );
   fs.writeFileSync(
     versionManifestPath,

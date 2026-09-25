@@ -16,7 +16,19 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _get_next_public_url() -> str:
-    return (os.getenv("NEXT_PUBLIC_URL") or "").strip() or "http://127.0.0.1"
+    url = (os.getenv("NEXT_PUBLIC_URL") or "").strip()
+    if not url:
+        return "http://127.0.0.1:3000"
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = f"http://{url}"
+    try:
+        from urllib.parse import urlparse
+        p = urlparse(url)
+        if p.hostname in ("127.0.0.1", "localhost") and not p.port:
+            return f"{p.scheme}://{p.hostname}:3000"
+    except Exception:
+        pass
+    return url
 
 
 def _get_next_public_fastapi_url() -> str | None:

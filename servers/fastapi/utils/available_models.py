@@ -200,3 +200,47 @@ async def list_available_google_models(api_key: str) -> list[str]:
             or getattr(e, "status_code", None)
             or 500,
         ) from e
+
+
+async def list_available_antigravity_models(access_token: str) -> list[str]:
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "User-Agent": "antigravity/1.18.3 windows/amd64",
+    }
+    urls = [
+        "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+        "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+    ]
+    async with aiohttp.ClientSession() as session:
+        for url in urls:
+            try:
+                async with session.post(
+                    url, headers=headers, json={}, timeout=aiohttp.ClientTimeout(total=8)
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        models: list[str] = []
+                        for sort in data.get("agentModelSorts", []):
+                            for group in sort.get("groups", []):
+                                for mid in group.get("modelIds", []):
+                                    if mid not in models:
+                                        models.append(mid)
+                        if models:
+                            return models
+            except Exception:
+                pass
+
+    return [
+        "gemini-3.6-flash-high",
+        "gemini-3.6-flash-medium",
+        "gemini-3.6-flash-low",
+        "gemini-3.1-pro-low",
+        "gemini-pro-agent",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "claude-sonnet-4-6",
+        "claude-opus-4-6-thinking",
+        "gpt-oss-120b-medium",
+    ]
+

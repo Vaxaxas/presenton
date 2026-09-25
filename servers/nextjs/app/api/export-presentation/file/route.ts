@@ -1,6 +1,7 @@
 import fs from "fs";
 import fsPromises from "fs/promises";
 import path from "path";
+import os from "os";
 import { Readable } from "stream";
 import { NextRequest, NextResponse } from "next/server";
 import { authStatusForRequest } from "@/lib/server-auth-role";
@@ -12,10 +13,9 @@ const CONTENT_TYPES: Record<string, string> = {
 };
 
 function getExportsDirectory(): string {
-  const appDataDirectory = process.env.APP_DATA_DIRECTORY?.trim();
-  if (!appDataDirectory) {
-    throw new Error("APP_DATA_DIRECTORY is required to download exported files.");
-  }
+  const appDataDirectory =
+    process.env.APP_DATA_DIRECTORY?.trim() ||
+    path.join(os.tmpdir(), "presenton");
   return path.join(appDataDirectory, "exports");
 }
 
@@ -24,13 +24,13 @@ function getSafeExportName(
   userId: string | null,
   isAdmin: boolean,
 ): string | null {
-  const decodedName = request.nextUrl.searchParams.get("name");
+  const rawName = request.nextUrl.searchParams.get("name");
+  if (!rawName) {
+    return null;
+  }
 
-  if (
-    !decodedName ||
-    decodedName.includes("\\") ||
-    path.isAbsolute(decodedName)
-  ) {
+  const decodedName = rawName.replace(/\\/g, "/");
+  if (path.isAbsolute(decodedName)) {
     return null;
   }
 

@@ -24,3 +24,12 @@ SUPPORTED_CODEX_MODELS = {
     "gpt-5.3-codex-spark",
 }
 DEFAULT_CODEX_MODEL = "gpt-5.6-luna"
+SUPPORTED_ANTIGRAVITY_MODELS = {
+    "gemini-3-pro-high",
+    "gemini-3-pro-low",
+    "claude-sonnet-4-6",
+    "claude-opus-4-6-thinking",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+}
+DEFAULT_ANTIGRAVITY_MODEL = "gemini-3-pro-high"

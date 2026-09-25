@@ -90,6 +90,17 @@ def _check_image_provider_configuration() -> None:
         if not workflow_json:
             raise Exception("COMFYUI_WORKFLOW must be provided")
 
+    elif selected_image_provider == ImageProvider.ANTIGRAVITY:
+        from utils.llm_config import _get_antigravity_access_token
+
+        try:
+            token = _get_antigravity_access_token()
+            if not token:
+                raise Exception("ANTIGRAVITY_ACCESS_TOKEN must be provided (Sign in with Google required)")
+        except Exception as exc:
+            raise Exception(f"ANTIGRAVITY_ACCESS_TOKEN must be provided (Sign in with Google required): {exc}")
+
+
 
 async def check_llm_and_image_provider_api_or_model_availability():
     can_change_keys = get_can_change_keys_env() != "false"
@@ -224,6 +235,17 @@ async def check_llm_and_image_provider_api_or_model_availability():
                 raise Exception("CUSTOM_MODEL must be provided")
             if not custom_llm_url:
                 raise Exception("CUSTOM_LLM_URL must be provided")
+
+        elif get_llm_provider() == LLMProvider.ANTIGRAVITY:
+            from utils.get_env import get_antigravity_access_token_env
+            from utils.oauth.antigravity import detect_and_load_local_gemini_credentials
+
+            token = get_antigravity_access_token_env()
+            if not token:
+                loaded = detect_and_load_local_gemini_credentials()
+                if not loaded or not loaded.access:
+                    raise Exception("ANTIGRAVITY_ACCESS_TOKEN must be provided (Sign in with Google required)")
+
 
         if not skip_image_validation:
             _check_image_provider_configuration()

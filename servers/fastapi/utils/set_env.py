@@ -377,3 +377,32 @@ def set_openai_compat_image_api_key_env(value: str):
 
 def set_openai_compat_image_model_env(value: str):
     os.environ["OPENAI_COMPAT_IMAGE_MODEL"] = value
+
+
+# Antigravity OAuth
+def set_antigravity_access_token_env(value: str):
+    os.environ["ANTIGRAVITY_ACCESS_TOKEN"] = value
+
+
+def set_antigravity_refresh_token_env(value: str):
+    os.environ["ANTIGRAVITY_REFRESH_TOKEN"] = value
+
+
+def set_antigravity_token_expires_env(value: str):
+    os.environ["ANTIGRAVITY_TOKEN_EXPIRES"] = value
+
+
+def set_antigravity_email_env(value: str):
+    os.environ["ANTIGRAVITY_EMAIL"] = value
+
+
+def set_antigravity_name_env(value: str):
+    os.environ["ANTIGRAVITY_NAME"] = value
+
+
+def set_antigravity_project_id_env(value: str):
+    os.environ["ANTIGRAVITY_PROJECT_ID"] = value
+
+
+def set_antigravity_model_env(value: str):
+    os.environ["ANTIGRAVITY_MODEL"] = value

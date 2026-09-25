@@ -1,3 +1,4 @@
+import asyncio
 import html
 import logging
 import re
@@ -25,7 +26,7 @@ from utils.llm_provider import get_llm_provider
 LOGGER = logging.getLogger(__name__)
 DEFAULT_MAX_RESULTS = 5
 NATIVE_WEB_SEARCH_PROVIDERS = frozenset(
-    {LLMProvider.OPENAI, LLMProvider.GOOGLE, LLMProvider.ANTHROPIC}
+    {LLMProvider.OPENAI, LLMProvider.GOOGLE, LLMProvider.ANTHROPIC, LLMProvider.ANTIGRAVITY}
 )
 
 
@@ -130,6 +131,8 @@ async def search_web(query: str, max_results: int | None = None) -> list[WebSear
                 results = await _search_brave(session, query, limit)
             elif provider == WebSearchProvider.SERPER:
                 results = await _search_serper(session, query, limit)
+            elif provider == WebSearchProvider.ANTIGRAVITY:
+                results = await _search_antigravity(query, limit)
             else:
                 raise HTTPException(
                     status_code=400,
@@ -327,3 +330,86 @@ async def _search_serper(session: aiohttp.ClientSession, query: str, limit: int)
         for item in payload.get("organic", [])[:limit]
         if item.get("title") and item.get("link")
     ]
+
+
+async def _search_antigravity(query: str, limit: int) -> list[WebSearchResult]:
+    from utils.llm_config import _get_antigravity_access_token
+    from utils.oauth.antigravity import detect_and_load_local_gemini_credentials
+    from urllib.parse import quote_plus
+
+    access_token = _get_antigravity_access_token()
+    project_id = "rising-fact-p41fc"
+    creds = detect_and_load_local_gemini_credentials()
+    if creds and getattr(creds, "project_id", None):
+        project_id = creds.project_id
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "User-Agent": "antigravity/1.18.3 windows/amd64",
+    }
+    payload = {
+        "project": project_id,
+        "model": "gemini-3.5-flash-lite",
+        "request": {
+            "contents": [
+                {"role": "user", "parts": [{"text": f"Find relevant information and sources for: {query}"}]}
+            ],
+            "tools": [{"googleSearch": {}}],
+        },
+    }
+    urls = [
+        "https://daily-cloudcode-pa.googleapis.com/v1internal:generateContent",
+        "https://cloudcode-pa.googleapis.com/v1internal:generateContent",
+    ]
+
+    data = None
+    async with aiohttp.ClientSession() as session:
+        for url in urls:
+            try:
+                async with session.post(
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=25),
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        break
+                    else:
+                        LOGGER.warning("Antigravity web search on %s returned status %d", url, resp.status)
+            except Exception as exc:
+                LOGGER.warning("Antigravity web search error on %s: %s", url, exc)
+
+    if not data:
+        return []
+
+    results: list[WebSearchResult] = []
+    response = data.get("response", {})
+    candidates = response.get("candidates", [])
+    if candidates:
+        first_candidate = candidates[0]
+        grounding = first_candidate.get("groundingMetadata", {})
+        chunks = grounding.get("groundingChunks", [])
+        for chunk in chunks[:limit]:
+            web = chunk.get("web", {})
+            title = web.get("title", "")
+            uri = web.get("uri", "")
+            if title and uri:
+                results.append(WebSearchResult(_clean_text(title), str(uri), _clean_text(title)))
+
+        if not results:
+            parts = first_candidate.get("content", {}).get("parts", [])
+            full_text = "".join(p.get("text", "") for p in parts if "text" in p).strip()
+            if full_text:
+                results.append(
+                    WebSearchResult(
+                        title=f"Google Search: {query[:60]}",
+                        url="https://www.google.com/search?q=" + quote_plus(query),
+                        snippet=_clean_text(full_text[:500]),
+                    )
+                )
+
+    return results
+
+

@@ -8,6 +8,9 @@ from starlette.responses import FileResponse
 
 from api.lifespan import app_lifespan
 from api.middlewares import SessionAuthMiddleware, UserConfigEnvUpdateMiddleware
+from utils.antigravity_client import register_antigravity_client
+
+register_antigravity_client()
 from api.v1.async_tasks.router import API_V1_ASYNC_TASKS_ROUTER
 from api.v1.auth.router import API_V1_AUTH_ROUTER
 from api.v1.admin.router import API_V1_ADMIN_ROUTER

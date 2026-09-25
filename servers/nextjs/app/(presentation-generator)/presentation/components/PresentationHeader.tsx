@@ -260,7 +260,8 @@ const PresentationHeader = ({
         });
 
         if (!response.ok) {
-          throw new Error("Failed to export PPTX");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to export PPTX (${response.status})`);
         }
 
         const { path: pptxPath } = await response.json();
@@ -292,9 +293,10 @@ const PresentationHeader = ({
         exportStartedAt,
         error
       );
+      const message = error instanceof Error ? error.message : String(error);
       notify.error(
         "Export failed",
-        "We are having trouble exporting your presentation. Please try again.",
+        message || "We are having trouble exporting your presentation. Please try again.",
         exportToastId !== undefined ? { id: exportToastId } : undefined
       );
     } finally {
@@ -348,7 +350,8 @@ const PresentationHeader = ({
           }
           downloadLink(pdfPath, safePdfFileName);
         } else {
-          throw new Error("Failed to export PDF");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Failed to export PDF (${response.status})`);
         }
       }
       await trackExportLifecycle(
@@ -373,9 +376,10 @@ const PresentationHeader = ({
         exportStartedAt,
         error
       );
+      const message = error instanceof Error ? error.message : String(error);
       notify.error(
         "Export failed",
-        "We are having trouble exporting your presentation. Please try again.",
+        message || "We are having trouble exporting your presentation. Please try again.",
         exportToastId !== undefined ? { id: exportToastId } : undefined
       );
     } finally {

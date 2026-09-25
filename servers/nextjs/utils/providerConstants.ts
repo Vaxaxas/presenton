@@ -47,6 +47,13 @@ export const WEB_SEARCH_PROVIDERS: Record<string, WebSearchProviderOption> = {
       "Use model-native web grounding when available. Otherwise web search stays off until you choose an external provider.",
     icon: "/providers/model-search.svg",
   },
+  antigravity: {
+    value: "antigravity",
+    label: "Google Antigravity",
+    description:
+      "Google Search grounding using your connected Antigravity OAuth session.",
+    icon: "/providers/gemini-color.svg",
+  },
   searxng: {
     value: "searxng",
     label: "SearXNG",
@@ -177,6 +184,13 @@ export const IMAGE_PROVIDERS: Record<string, ImageProviderOption> = {
     apiKeyField: "OPENAI_COMPAT_IMAGE_BASE_URL",
     apiKeyFieldLabel: "OpenAI-compatible base URL",
   },
+  antigravity: {
+    value: "antigravity",
+    label: "Google Antigravity",
+    description: "Imagen 3 & Gemini image generation via Antigravity OAuth",
+    icon: "/providers/gemini-color.svg",
+    requiresApiKey: false,
+  },
 };
 
 export const LLM_PROVIDERS: Record<string, LLMProviderOption> = {
@@ -191,6 +205,12 @@ export const LLM_PROVIDERS: Record<string, LLMProviderOption> = {
     label: "ChatGPT",
     description: "ChatGPT Plus/Pro via OAuth",
     icon: "/providers/openai.png",
+  },
+  antigravity: {
+    value: "antigravity",
+    label: "Antigravity",
+    description: "Gemini 3 Pro & Claude via Google Antigravity OAuth",
+    icon: "/providers/gemini-color.svg",
   },
   openai: {
     value: "openai",

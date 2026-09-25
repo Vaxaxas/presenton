@@ -77,12 +77,11 @@ function normalizeExportOutputPath(params: {
   urlValue?: string;
 }): string {
   const { pathValue, urlValue } = params;
-  const appData = process.env.APP_DATA_DIRECTORY?.trim();
+  const appData =
+    process.env.APP_DATA_DIRECTORY?.trim() ||
+    path.join(os.tmpdir(), "presenton");
 
   const resolveAppDataRelative = (value: string): string => {
-    if (!appData) {
-      throw new Error("APP_DATA_DIRECTORY is required for relative export paths.");
-    }
 
     const normalized = value.startsWith("/") ? value.slice(1) : value;
     if (!normalized.startsWith("app_data/")) {
@@ -139,6 +138,7 @@ export async function runBundledPresentationExport(params: {
   title: string | undefined;
   format: BundledPresentationExportFormat;
   cookieHeader?: string;
+  baseUrl?: string;
 }): Promise<BundledPresentationExportResult> {
   return runBundledPresentationExportLocked(params);
 }
@@ -148,14 +148,39 @@ async function runBundledPresentationExportLocked(params: {
   title: string | undefined;
   format: BundledPresentationExportFormat;
   cookieHeader?: string;
+  baseUrl?: string;
 }): Promise<BundledPresentationExportResult> {
-  const { presentationId, title, format, cookieHeader } = params;
+  const { presentationId, title, format, cookieHeader, baseUrl } = params;
   const exportRoot = getExportPackageRoot();
   const entrypoint = await resolveExportEntrypoint(exportRoot);
   const appRoot = getPresentonAppRoot();
+  const appData =
+    process.env.APP_DATA_DIRECTORY?.trim() ||
+    path.join(os.tmpdir(), "presenton");
 
-  const nextjsUrl =
-    process.env.NEXT_PUBLIC_URL?.trim() || "http://127.0.0.1";
+  const port = process.env.PORT || "3000";
+  let nextjsUrl =
+    baseUrl?.trim() ||
+    process.env.NEXT_PUBLIC_URL?.trim() ||
+    `http://127.0.0.1:${port}`;
+
+  if (!nextjsUrl.startsWith("http://") && !nextjsUrl.startsWith("https://")) {
+    nextjsUrl = `http://${nextjsUrl}`;
+  }
+
+  try {
+    const parsed = new URL(nextjsUrl);
+    if (
+      (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
+      !parsed.port
+    ) {
+      parsed.port = port;
+      nextjsUrl = parsed.origin;
+    }
+  } catch {
+    // ignore
+  }
+
   const q = new URLSearchParams({ id: presentationId, format });
   const sessionToken = extractSessionTokenFromCookieHeader(cookieHeader);
   if (sessionToken) {
@@ -199,7 +224,10 @@ async function runBundledPresentationExportLocked(params: {
       const child = spawn(process.execPath, [entrypoint, exportTaskPath], {
         cwd: appRoot,
         stdio: ["ignore", "pipe", "pipe"],
-        env: process.env,
+        env: {
+          ...process.env,
+          APP_DATA_DIRECTORY: appData,
+        },
       });
       const stderr = new BoundedTextBuffer();
       const stdout = new BoundedTextBuffer();

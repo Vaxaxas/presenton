@@ -1,0 +1,4 @@
+target/
+resources/fastapi/
+resources/node/
+resources/nextjs/

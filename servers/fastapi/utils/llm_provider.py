@@ -4,6 +4,7 @@ from openai import OpenAI
 
 from constants.llm import (
     DEFAULT_ANTHROPIC_MODEL,
+    DEFAULT_ANTIGRAVITY_MODEL,
     DEFAULT_AZURE_MODEL,
     DEFAULT_BEDROCK_MODEL,
     DEFAULT_CEREBRAS_MODEL,
@@ -17,10 +18,12 @@ from constants.llm import (
     DEFAULT_OPENROUTER_MODEL,
     DEFAULT_TOGETHER_MODEL,
     DEFAULT_VERTEX_MODEL,
+    SUPPORTED_ANTIGRAVITY_MODELS,
     SUPPORTED_CODEX_MODELS,
 )
 from enums.llm_provider import LLMProvider
 from utils.get_env import (
+    get_antigravity_model_env,
     get_azure_openai_deployment_env,
     get_azure_openai_model_env,
     get_anthropic_model_env,
@@ -54,7 +57,7 @@ def get_llm_provider():
                 "Invalid LLM provider. Please select one of: "
                 "openai, deepseek, google, vertex, azure, bedrock, openrouter, "
                 "fireworks, together, cerebras, anthropic, litellm, "
-                "lmstudio, ollama, custom, codex"
+                "lmstudio, ollama, custom, codex, antigravity"
             ),
         )
 
@@ -115,6 +118,10 @@ def is_codex_selected():
     return get_llm_provider() == LLMProvider.CODEX
 
 
+def is_antigravity_selected():
+    return get_llm_provider() == LLMProvider.ANTIGRAVITY
+
+
 def is_litellm_selected():
     return get_llm_provider() == LLMProvider.LITELLM
 
@@ -162,6 +169,13 @@ def get_model():
     elif selected_llm == LLMProvider.CODEX:
         codex_model = get_codex_model_env()
         return codex_model if codex_model in SUPPORTED_CODEX_MODELS else DEFAULT_CODEX_MODEL
+    elif selected_llm == LLMProvider.ANTIGRAVITY:
+        antigravity_model = get_antigravity_model_env()
+        return (
+            antigravity_model
+            if antigravity_model in SUPPORTED_ANTIGRAVITY_MODELS
+            else DEFAULT_ANTIGRAVITY_MODEL
+        )
     else:
         raise HTTPException(
             status_code=500,
@@ -169,7 +183,7 @@ def get_model():
                 "Invalid LLM provider. Please select one of: "
                 "openai, deepseek, google, vertex, azure, bedrock, openrouter, "
                 "fireworks, together, cerebras, anthropic, litellm, "
-                "lmstudio, ollama, custom, codex"
+                "lmstudio, ollama, custom, codex, antigravity"
             ),
         )
 

@@ -17,6 +17,7 @@ import PresentationMode from "./PresentationMode";
 import SidePanel from "./SidePanel";
 import SlideContent from "./SlideContent";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/components/ui/sonner";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
 import {
@@ -173,7 +174,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   const [isMobileAssistantOpen, setIsMobileAssistantOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [showNavigationHint, setShowNavigationHint] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | boolean>(false);
   const mobileAssistantTriggerRef = useRef<HTMLButtonElement | null>(null);
   const mobileAssistantCloseRef = useRef<HTMLButtonElement | null>(null);
   const presentationCanvasRef = useRef<HTMLDivElement | null>(null);
@@ -801,19 +802,47 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
   }
 
   if (error) {
+    const errorMessage =
+      typeof error === "string" && error.trim()
+        ? error.trim()
+        : "We couldn't load your presentation. Please try again.";
+
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-gray-100 font-syne">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4 font-syne">
         <div
-          className="bg-white border border-red-300 text-red-700 px-6 py-8 rounded-lg shadow-lg flex flex-col items-center"
+          className="bg-white border border-red-300 text-red-700 px-6 py-8 rounded-xl shadow-lg flex flex-col items-center max-w-xl w-full text-center"
           role="alert"
         >
-          <AlertCircle className="w-16 h-16 mb-4 text-red-500" />
-          <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
-          <p className="text-center mb-4">
-            We couldn't load your presentation. Please try again.
+          <AlertCircle className="w-14 h-14 mb-3 text-red-500 shrink-0" />
+          <h2 className="text-xl font-bold mb-1 text-[#191919]">
+            Something went wrong
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            We couldn't load or generate your presentation.
           </p>
-          <div className="flex gap-2 justify-center items-center">
+
+          <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3.5 mb-5 text-left font-mono text-xs text-red-900 break-words select-text">
+            <div className="flex items-center justify-between mb-1.5 font-semibold text-red-800 font-syne">
+              <span>Error Details:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(errorMessage);
+                  notify.success("Error message copied to clipboard");
+                }}
+                className="text-xs text-[#7A5AF8] hover:underline font-medium font-sans cursor-pointer"
+              >
+                Copy Error
+              </button>
+            </div>
+            <pre className="whitespace-pre-wrap max-h-48 overflow-y-auto font-mono text-[11px] leading-relaxed bg-white/70 p-2.5 rounded border border-red-100">
+              {errorMessage}
+            </pre>
+          </div>
+
+          <div className="flex gap-3 justify-center items-center w-full">
             <Button
+              className="bg-[#7A5AF8] hover:bg-[#6842f5] text-white px-5"
               onClick={() => {
                 trackEvent(
                   MixpanelEvent.PresentationPage_Refresh_Page_Button_Clicked,
@@ -825,6 +854,7 @@ const PresentationPage: React.FC<PresentationPageProps> = ({
               Refresh Page
             </Button>
             <Button
+              variant="outline"
               onClick={() => {
                 trackEvent(MixpanelEvent.Navigation, {
                   from: pathname,

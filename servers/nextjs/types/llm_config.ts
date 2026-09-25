@@ -145,6 +145,15 @@ export interface LLMConfig {
   CODEX_EMAIL?: string;
   CODEX_IS_PRO?: boolean;
 
+  // Antigravity OAuth (Google)
+  ANTIGRAVITY_MODEL?: string;
+  ANTIGRAVITY_ACCESS_TOKEN?: string;
+  ANTIGRAVITY_REFRESH_TOKEN?: string;
+  ANTIGRAVITY_TOKEN_EXPIRES?: string;
+  ANTIGRAVITY_EMAIL?: string;
+  ANTIGRAVITY_NAME?: string;
+  ANTIGRAVITY_PROJECT_ID?: string;
+
   // Only used in UI settings
   USE_CUSTOM_URL?: boolean;
 

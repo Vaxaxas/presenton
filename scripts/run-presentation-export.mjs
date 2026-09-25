@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { runTask } from "@presenton/export-core";
 
@@ -31,7 +32,9 @@ function buildModifyWindow(fastapiUrl) {
 }
 
 function buildRunOptions(task, legacyTask) {
-  const appDataDirectory = process.env.APP_DATA_DIRECTORY?.trim();
+  const appDataDirectory =
+    process.env.APP_DATA_DIRECTORY?.trim() ||
+    path.join(os.tmpdir(), "presenton");
   const tempDirectory = process.env.TEMP_DIRECTORY?.trim();
   const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH?.trim();
   const puppeteerCacheDirectory = process.env.PUPPETEER_CACHE_DIR?.trim();

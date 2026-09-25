@@ -46,6 +46,11 @@ def is_open_webui_selected() -> bool:
     return ImageProvider.OPEN_WEBUI == get_selected_image_provider()
 
 
+def is_antigravity_image_selected() -> bool:
+    return ImageProvider.ANTIGRAVITY == get_selected_image_provider()
+
+
+
 def get_selected_image_provider() -> ImageProvider | None:
     """
     Get the selected image provider from environment variables.

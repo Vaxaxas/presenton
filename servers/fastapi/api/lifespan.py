@@ -57,6 +57,8 @@ async def app_lifespan(_: FastAPI):
     availability.
     """
     _configure_application_logging()
+    from utils.antigravity_client import register_antigravity_client
+    register_antigravity_client()
     os.makedirs(get_app_data_directory_env(), exist_ok=True)
     await migrate_database_on_startup()
     await create_db_and_tables()

@@ -4,8 +4,11 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl
 import ssl
 
 
+import tempfile
+
+
 def _ensure_sqlite_parent_dir(database_url: str) -> None:
-    if not database_url.startswith("sqlite://"):
+    if not (database_url.startswith("sqlite://") or database_url.startswith("sqlite+aiosqlite://")):
         return
 
     split_result = urlsplit(database_url)
@@ -13,13 +16,17 @@ def _ensure_sqlite_parent_dir(database_url: str) -> None:
     if not db_path:
         return
 
-    # sqlite URLs on Windows can start with /C:/..., normalize that for os.path.
-    if os.name == "nt" and len(db_path) >= 3 and db_path[0] == "/" and db_path[2] == ":":
-        db_path = db_path[1:]
+    # sqlite URLs on Windows can start with /C:/... or //tmp/..., normalize that for os.path.
+    if os.name == "nt":
+        if len(db_path) >= 3 and db_path[0] == "/" and db_path[2] == ":":
+            db_path = db_path[1:]
+        elif db_path.startswith("//tmp/") or db_path.startswith("/tmp/"):
+            db_path = os.path.join(tempfile.gettempdir(), "presenton", os.path.basename(db_path))
 
     parent = os.path.dirname(db_path)
     if parent:
         os.makedirs(parent, exist_ok=True)
+
 def _int_env(name: str, default: int) -> int:
     """Read an integer from an environment variable, falling back to *default*."""
     raw = os.getenv(name)
@@ -55,8 +62,11 @@ def get_pool_kwargs() -> dict:
 
 
 def get_database_url_and_connect_args() -> tuple[str, dict]:
+    default_dir = get_app_data_directory_env() or (
+        os.path.join(tempfile.gettempdir(), "presenton") if os.name == "nt" else "/tmp/presenton"
+    )
     database_url = get_database_url_env() or "sqlite:///" + os.path.join(
-        get_app_data_directory_env() or "/tmp/presenton", "fastapi.db"
+        default_dir, "fastapi.db"
     )
 
     _ensure_sqlite_parent_dir(database_url)

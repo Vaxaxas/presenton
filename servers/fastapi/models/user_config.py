@@ -150,3 +150,12 @@ class UserConfig(BaseModel):
     CODEX_USERNAME: Optional[str] = None
     CODEX_EMAIL: Optional[str] = None
     CODEX_IS_PRO: Optional[bool] = None
+
+    # Antigravity OAuth
+    ANTIGRAVITY_MODEL: Optional[str] = None
+    ANTIGRAVITY_ACCESS_TOKEN: Optional[str] = None
+    ANTIGRAVITY_REFRESH_TOKEN: Optional[str] = None
+    ANTIGRAVITY_TOKEN_EXPIRES: Optional[str] = None
+    ANTIGRAVITY_EMAIL: Optional[str] = None
+    ANTIGRAVITY_NAME: Optional[str] = None
+    ANTIGRAVITY_PROJECT_ID: Optional[str] = None

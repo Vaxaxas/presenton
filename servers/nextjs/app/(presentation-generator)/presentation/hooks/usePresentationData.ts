@@ -19,7 +19,7 @@ import {
 export const usePresentationData = (
   presentationId: string,
   setLoading: (loading: boolean) => void,
-  setError: (error: boolean) => void
+  setError: (error: boolean | string) => void
 ) => {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -77,8 +77,12 @@ export const usePresentationData = (
 
       return normalizedData;
     } catch (error) {
-      setError(true);
-      notify.error("Failed to load presentation", "The presentation could not be loaded. Please try again.");
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : "The presentation could not be loaded. Please try again.";
+      setError(errorMsg);
+      notify.error("Failed to load presentation", errorMsg);
       console.error("Error fetching user slides:", error);
       setLoading(false);
       return undefined;

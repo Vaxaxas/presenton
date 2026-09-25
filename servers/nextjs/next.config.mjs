@@ -16,9 +16,36 @@ const nextConfig = {
         allowedDevOrigins: [
           "127.0.0.1",
           "localhost",
+          "192.168.213.1",
+          "0.0.0.0",
         ],
       }
     : {}),
+
+  async rewrites() {
+    const fastApiUrl =
+      process.env.FAST_API_INTERNAL_URL ||
+      process.env.NEXT_PUBLIC_FAST_API ||
+      "http://127.0.0.1:5001";
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${fastApiUrl}/api/v1/:path*`,
+      },
+      {
+        source: "/api/v2/:path*",
+        destination: `${fastApiUrl}/api/v2/:path*`,
+      },
+      {
+        source: "/app_data/:path*",
+        destination: `${fastApiUrl}/app_data/:path*`,
+      },
+      {
+        source: "/static/:path*",
+        destination: `${fastApiUrl}/static/:path*`,
+      },
+    ];
+  },
 
   images: {
     // A packaged Electron app is installed under a read-only directory such as

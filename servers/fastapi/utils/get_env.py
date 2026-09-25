@@ -1,5 +1,7 @@
 import os
+import tempfile
 from typing import Literal
+
 
 
 PresentationGenerationMode = Literal["both", "standard", "smart"]
@@ -46,7 +48,10 @@ def get_database_url_env():
 
 
 def get_app_data_directory_env():
-    return os.getenv("APP_DATA_DIRECTORY")
+    return os.getenv("APP_DATA_DIRECTORY") or (
+        os.path.join(tempfile.gettempdir(), "presenton") if os.name == "nt" else "/tmp/presenton"
+    )
+
 
 
 def get_fastapi_public_base_url() -> str | None:
@@ -65,7 +70,9 @@ def get_temp_directory_env():
 
 
 def get_user_config_path_env():
-    return os.getenv("USER_CONFIG_PATH")
+    return os.getenv("USER_CONFIG_PATH") or os.path.join(
+        get_app_data_directory_env(), "userConfig.json"
+    )
 
 
 def get_disable_auth_env():
@@ -485,3 +492,32 @@ def get_openai_compat_image_api_key_env():
 
 def get_openai_compat_image_model_env():
     return os.getenv("OPENAI_COMPAT_IMAGE_MODEL")
+
+
+# Antigravity OAuth
+def get_antigravity_access_token_env():
+    return os.getenv("ANTIGRAVITY_ACCESS_TOKEN")
+
+
+def get_antigravity_refresh_token_env():
+    return os.getenv("ANTIGRAVITY_REFRESH_TOKEN")
+
+
+def get_antigravity_token_expires_env():
+    return os.getenv("ANTIGRAVITY_TOKEN_EXPIRES")
+
+
+def get_antigravity_email_env():
+    return os.getenv("ANTIGRAVITY_EMAIL")
+
+
+def get_antigravity_name_env():
+    return os.getenv("ANTIGRAVITY_NAME")
+
+
+def get_antigravity_project_id_env():
+    return os.getenv("ANTIGRAVITY_PROJECT_ID")
+
+
+def get_antigravity_model_env():
+    return os.getenv("ANTIGRAVITY_MODEL")

@@ -2194,6 +2194,7 @@ async def stream_smart_presentation(
             "source": "generation",
             "status_code": status_code,
             "error_type": exc.__class__.__name__,
+            "error_details": str(exc).strip() or None,
             "retryable": (
                 status_code in {408, 429} or status_code >= 500
             ),
@@ -2444,12 +2445,21 @@ async def stream_presentation(
     async def rollback_stream_session():
         await sql_session.rollback()
 
+    async def standard_error_metadata(exc: Exception) -> dict[str, object]:
+        return {
+            "source": "generation",
+            "status_code": exc.status_code if isinstance(exc, HTTPException) else 500,
+            "error_type": exc.__class__.__name__,
+            "error_details": str(exc).strip() or None,
+        }
+
     return StreamingResponse(
         safe_sse_stream(
             inner(),
             logger=logger,
             error_detail="Failed to generate presentation slides. Please try again.",
             on_error=rollback_stream_session,
+            error_metadata=standard_error_metadata,
         ),
         media_type="text/event-stream",
     )

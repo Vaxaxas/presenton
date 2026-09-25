@@ -6,6 +6,7 @@ import AnthropicConfig from "./AnthropicConfig";
 import OllamaConfig from "./OllamaConfig";
 import CustomConfig from "./CustomConfig";
 import CodexConfig from "./CodexConfig";
+import AntigravityConfig from "./AntigravityConfig";
 import {
   updateLLMConfig,
   changeProvider as changeProviderUtil,
@@ -225,9 +226,10 @@ export default function LLMProviderSelection({
           onValueChange={handleProviderChange}
           className="w-full"
         >
-          <TabsList className="grid w-full grid-cols-6 bg-transparent h-10">
+          <TabsList className="grid w-full grid-cols-7 bg-transparent h-10">
             <TabsTrigger value="openai">OpenAI</TabsTrigger>
             <TabsTrigger value="google">Google</TabsTrigger>
+            <TabsTrigger value="antigravity">Antigravity</TabsTrigger>
             <TabsTrigger value="anthropic">Anthropic</TabsTrigger>
             <TabsTrigger value="ollama">Ollama</TabsTrigger>
             <TabsTrigger value="custom">Custom</TabsTrigger>
@@ -260,6 +262,14 @@ export default function LLMProviderSelection({
               googleApiKey={llmConfig.GOOGLE_API_KEY || ""}
               googleModel={llmConfig.GOOGLE_MODEL || ""}
               webGrounding={llmConfig.WEB_GROUNDING || false}
+              onInputChange={input_field_changed}
+            />
+          </TabsContent>
+
+          {/* Antigravity Content */}
+          <TabsContent value="antigravity" className="mt-6">
+            <AntigravityConfig
+              antigravityModel={llmConfig.ANTIGRAVITY_MODEL || ""}
               onInputChange={input_field_changed}
             />
           </TabsContent>

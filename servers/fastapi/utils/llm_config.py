@@ -43,6 +43,12 @@ from utils.get_env import (
     get_bedrock_region_env,
     get_cerebras_api_key_env,
     get_cerebras_base_url_env,
+    get_antigravity_access_token_env,
+    get_antigravity_email_env,
+    get_antigravity_name_env,
+    get_antigravity_project_id_env,
+    get_antigravity_refresh_token_env,
+    get_antigravity_token_expires_env,
     get_codex_access_token_env,
     get_codex_account_id_env,
     get_codex_refresh_token_env,
@@ -90,11 +96,102 @@ from utils.set_env import (
     set_codex_account_id_env,
     set_codex_refresh_token_env,
     set_codex_token_expires_env,
+    set_antigravity_access_token_env,
+    set_antigravity_email_env,
+    set_antigravity_name_env,
+    set_antigravity_project_id_env,
+    set_antigravity_refresh_token_env,
+    set_antigravity_token_expires_env,
 )
 
 
 CHATGPT_AUTH_REQUIRED_HEADERS = {"X-Presenton-Auth-Action": "codex-reauth"}
 CHATGPT_AUTH_REQUIRED_PREFIX = "CHATGPT_AUTH_REQUIRED:"
+
+ANTIGRAVITY_AUTH_REQUIRED_HEADERS = {"X-Presenton-Auth-Action": "antigravity-reauth"}
+ANTIGRAVITY_AUTH_REQUIRED_PREFIX = "ANTIGRAVITY_AUTH_REQUIRED:"
+
+
+def _get_antigravity_access_token() -> str:
+    access_token = get_antigravity_access_token_env()
+    if not access_token:
+        # Check if local credentials can be auto-loaded
+        from utils.oauth.antigravity import detect_and_load_local_gemini_credentials
+
+        loaded = detect_and_load_local_gemini_credentials()
+        if loaded:
+            set_antigravity_access_token_env(loaded.access)
+            set_antigravity_refresh_token_env(loaded.refresh)
+            set_antigravity_token_expires_env(str(loaded.expires))
+            if loaded.email:
+                set_antigravity_email_env(loaded.email)
+            if loaded.name:
+                set_antigravity_name_env(loaded.name)
+            set_antigravity_project_id_env(loaded.project_id or "rising-fact-p41fc")
+            from utils.user_config import save_antigravity_tokens_to_user_config
+
+            save_antigravity_tokens_to_user_config()
+            access_token = loaded.access
+
+    if not access_token:
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                f"{ANTIGRAVITY_AUTH_REQUIRED_PREFIX} Antigravity authentication is required. "
+                "Please sign in again from Settings."
+            ),
+            headers=ANTIGRAVITY_AUTH_REQUIRED_HEADERS,
+        )
+
+    expires_str = get_antigravity_token_expires_env()
+    if expires_str:
+        try:
+            expires_ms = int(expires_str)
+            now_ms = int(time.time() * 1000)
+            if now_ms >= expires_ms - 60_000:
+                refresh_token = get_antigravity_refresh_token_env()
+                if not refresh_token:
+                    raise HTTPException(
+                        status_code=401,
+                        detail=(
+                            f"{ANTIGRAVITY_AUTH_REQUIRED_PREFIX} Your Antigravity session expired. "
+                            "Please sign in again from Settings."
+                        ),
+                        headers=ANTIGRAVITY_AUTH_REQUIRED_HEADERS,
+                    )
+
+                from utils.oauth.antigravity import (
+                    TokenSuccess,
+                    refresh_access_token,
+                )
+                from utils.user_config import save_antigravity_tokens_to_user_config
+
+                result = refresh_access_token(refresh_token)
+                if not isinstance(result, TokenSuccess):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=(
+                            f"{ANTIGRAVITY_AUTH_REQUIRED_PREFIX} Your Antigravity session expired. "
+                            "Please sign in again from Settings."
+                        ),
+                        headers=ANTIGRAVITY_AUTH_REQUIRED_HEADERS,
+                    )
+
+                set_antigravity_access_token_env(result.access)
+                set_antigravity_refresh_token_env(result.refresh)
+                set_antigravity_token_expires_env(str(result.expires))
+                if result.email:
+                    set_antigravity_email_env(result.email)
+                if result.name:
+                    set_antigravity_name_env(result.name)
+                if result.project_id:
+                    set_antigravity_project_id_env(result.project_id)
+                save_antigravity_tokens_to_user_config()
+                access_token = result.access
+        except (TypeError, ValueError):
+            pass
+
+    return access_token
 
 
 def enable_web_grounding() -> bool:
@@ -469,13 +566,24 @@ def _get_llm_config(*, use_openai_responses_api: bool = False) -> ClientConfig:
                 access_token=_get_codex_access_token(),
                 account_id=get_codex_account_id_env() or None,
             )
+        case LLMProvider.ANTIGRAVITY:
+            from utils.antigravity_client import (
+                AntigravityClientConfig,
+                register_antigravity_client,
+            )
+
+            register_antigravity_client()
+            return AntigravityClientConfig(
+                access_token=_get_antigravity_access_token(),
+                project_id=get_antigravity_project_id_env() or "rising-fact-p41fc",
+            )
         case _:
             raise HTTPException(
                 status_code=400,
                 detail=(
                     "LLM Provider must be either openai, deepseek, google, vertex, azure, "
                     "bedrock, openrouter, fireworks, together, cerebras, "
-                    "anthropic, litellm, lmstudio, ollama, custom, or codex"
+                    "anthropic, litellm, lmstudio, ollama, custom, codex, or antigravity"
                 ),
             )
 

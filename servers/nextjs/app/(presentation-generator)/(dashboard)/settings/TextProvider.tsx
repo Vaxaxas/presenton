@@ -33,6 +33,7 @@ import {
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { notify } from "@/components/ui/sonner";
 import CodexConfig from "./SettingCodex";
+import AntigravityConfig from "./SettingAntigravity";
 import VertexAzureManualFields from "@/components/VertexAzureManualFields";
 import BedrockManualFields from "@/components/BedrockManualFields";
 import { MixpanelEvent, trackEvent } from "@/utils/mixpanel";
@@ -106,6 +107,8 @@ const TextProvider = ({ onInputChange, llmConfig }: OpenAIConfigProps) => {
         return "CUSTOM_MODEL";
       case "codex":
         return "CODEX_MODEL";
+      case "antigravity":
+        return "ANTIGRAVITY_MODEL";
       default:
         return "";
     }
@@ -471,12 +474,12 @@ const TextProvider = ({ onInputChange, llmConfig }: OpenAIConfigProps) => {
         <div className="flex min-w-0 flex-1 flex-col items-stretch justify-end gap-4 sm:items-end">
           <div
             className={`flex w-full min-w-0 flex-wrap gap-4 sm:justify-end ${
-              selectedProvider === "codex" ? "items-end" : "items-start"
+              selectedProvider === "codex" || selectedProvider === "antigravity" ? "items-end" : "items-start"
             }`}
           >
             <div
               className={`relative shrink-0 ${
-                selectedProvider === "codex" ? "w-[240px]" : "w-[262px]"
+                selectedProvider === "codex" || selectedProvider === "antigravity" ? "w-[240px]" : "w-[262px]"
               }`}
             >
               <div className="flex flex-col justify-start ">
@@ -579,7 +582,7 @@ const TextProvider = ({ onInputChange, llmConfig }: OpenAIConfigProps) => {
               className={`relative flex min-w-0 flex-col  justify-end ${
                 selectedProvider === "presenton"
                   ? "w-[440px] max-w-full shrink-0 items-stretch"
-                  : selectedProvider === "codex"
+                  : selectedProvider === "codex" || selectedProvider === "antigravity"
                   ? "items-end w-[262px]  max-w-full shrink-0"
                   : "items-end w-[282px]  shrink-0 max-w-full"
               }`}
@@ -617,6 +620,17 @@ const TextProvider = ({ onInputChange, llmConfig }: OpenAIConfigProps) => {
                       onInputChange={(value, field) => {
                         const normalizedField =
                           field === "codex_model" ? "CODEX_MODEL" : field;
+                        onInputChange(value, normalizedField);
+                      }}
+                    />
+                  </div>
+                ) : selectedProvider === "antigravity" ? (
+                  <div className="w-full mt-0 rounded-[12px]  ">
+                    <AntigravityConfig
+                      antigravityModel={llmConfig.ANTIGRAVITY_MODEL || ""}
+                      onInputChange={(value, field) => {
+                        const normalizedField =
+                          field === "antigravity_model" ? "ANTIGRAVITY_MODEL" : field;
                         onInputChange(value, normalizedField);
                       }}
                     />
@@ -806,6 +820,7 @@ const TextProvider = ({ onInputChange, llmConfig }: OpenAIConfigProps) => {
               {!isManualModelProvider &&
                 selectedProvider !== "presenton" &&
                 selectedProvider !== "codex" &&
+                selectedProvider !== "antigravity" &&
                 selectedProvider !== "ollama" &&
                 !modelsChecked && (
                   <button
@@ -845,6 +860,7 @@ const TextProvider = ({ onInputChange, llmConfig }: OpenAIConfigProps) => {
           {!isManualModelProvider &&
           selectedProvider !== "presenton" &&
           selectedProvider !== "codex" &&
+          selectedProvider !== "antigravity" &&
           selectedProvider !== "ollama" &&
           modelsChecked ? (
             <div className="w-[262px]">

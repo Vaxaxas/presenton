@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
+import sys
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -55,6 +57,18 @@ async def import_default_templates_on_startup(
 
 
 def _default_templates_root() -> Path:
+    env_dir = os.environ.get("TEMPLATES_DIR")
+    if env_dir:
+        env_path = Path(env_dir)
+        if env_path.is_dir():
+            return env_path
+
+    if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        for candidate in [exe_dir / "templates", exe_dir.parent / "templates"]:
+            if candidate.is_dir():
+                return candidate
+
     return Path(__file__).resolve().parents[3] / "templates"
 
 

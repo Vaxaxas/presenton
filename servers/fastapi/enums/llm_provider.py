@@ -18,3 +18,4 @@ class LLMProvider(Enum):
     LMSTUDIO = "lmstudio"
     CUSTOM = "custom"
     CODEX = "codex"
+    ANTIGRAVITY = "antigravity"

@@ -115,7 +115,7 @@ export const usePresentationStreaming = (
   presentationId: string,
   stream: string | null,
   setLoading: (loading: boolean) => void,
-  setError: (error: boolean) => void,
+  setError: (error: boolean | string) => void,
   fetchUserSlides: (options?: {
     clearHistory?: boolean;
   }) => void | Promise<unknown>,
@@ -189,7 +189,7 @@ export const usePresentationStreaming = (
       clearRetryTimer();
       setLoading(false);
       dispatch(setStreaming(false));
-      setError(true);
+      setError(description || true);
       if (options.showToast !== false) {
         notify.error("Presentation streaming failed", description);
       }
@@ -656,15 +656,21 @@ export const usePresentationStreaming = (
             }
             const completedSlides = Number(data.completed_slides);
             const totalSlides = Number(data.total_slides);
-            const detail =
+            const baseDetail =
               data.detail || "Failed to connect to the server. Please try again.";
+            const rawErrorDetails =
+              typeof data.error_details === "string" ? data.error_details.trim() : "";
+            const detail =
+              rawErrorDetails && !baseDetail.includes(rawErrorDetails)
+                ? `${baseDetail}\n\nDetails: ${rawErrorDetails}`
+                : baseDetail;
             const detailWithProgress =
               Number.isFinite(completedSlides) && completedSlides > 0
-                ? `${detail} ${completedSlides}${
+                ? `${detail} (${completedSlides}${
                     Number.isFinite(totalSlides) && totalSlides > 0
                       ? ` of ${totalSlides}`
                       : ""
-                  } slides were saved and will be reused.`
+                  } slides were saved and will be reused)`
                 : detail;
             if (data.retryable === false) {
               finalizeFailure(detailWithProgress);

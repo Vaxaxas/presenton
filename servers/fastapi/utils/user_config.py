@@ -90,6 +90,13 @@ from utils.get_env import (
     get_codex_email_env,
     get_codex_is_pro_env,
     get_codex_model_env,
+    get_antigravity_access_token_env,
+    get_antigravity_refresh_token_env,
+    get_antigravity_token_expires_env,
+    get_antigravity_email_env,
+    get_antigravity_name_env,
+    get_antigravity_project_id_env,
+    get_antigravity_model_env,
     get_open_webui_image_url_env,
     get_open_webui_image_api_key_env,
     get_openai_compat_image_base_url_env,
@@ -186,6 +193,13 @@ from utils.set_env import (
     set_codex_email_env,
     set_codex_is_pro_env,
     set_codex_model_env,
+    set_antigravity_access_token_env,
+    set_antigravity_refresh_token_env,
+    set_antigravity_token_expires_env,
+    set_antigravity_email_env,
+    set_antigravity_name_env,
+    set_antigravity_project_id_env,
+    set_antigravity_model_env,
     set_open_webui_image_url_env,
     set_open_webui_image_api_key_env,
     set_openai_compat_image_base_url_env,
@@ -364,6 +378,13 @@ def get_user_config():
             if existing_config.CODEX_IS_PRO is not None
             else parse_bool_or_none(get_codex_is_pro_env())
         ),
+        ANTIGRAVITY_MODEL=existing_config.ANTIGRAVITY_MODEL or get_antigravity_model_env(),
+        ANTIGRAVITY_ACCESS_TOKEN=existing_config.ANTIGRAVITY_ACCESS_TOKEN or get_antigravity_access_token_env(),
+        ANTIGRAVITY_REFRESH_TOKEN=existing_config.ANTIGRAVITY_REFRESH_TOKEN or get_antigravity_refresh_token_env(),
+        ANTIGRAVITY_TOKEN_EXPIRES=existing_config.ANTIGRAVITY_TOKEN_EXPIRES or get_antigravity_token_expires_env(),
+        ANTIGRAVITY_EMAIL=existing_config.ANTIGRAVITY_EMAIL or get_antigravity_email_env(),
+        ANTIGRAVITY_NAME=existing_config.ANTIGRAVITY_NAME or get_antigravity_name_env(),
+        ANTIGRAVITY_PROJECT_ID=existing_config.ANTIGRAVITY_PROJECT_ID or get_antigravity_project_id_env(),
         OPEN_WEBUI_IMAGE_URL=existing_config.OPEN_WEBUI_IMAGE_URL or get_open_webui_image_url_env(),
         OPEN_WEBUI_IMAGE_API_KEY=existing_config.OPEN_WEBUI_IMAGE_API_KEY or get_open_webui_image_api_key_env(),
         OPENAI_COMPAT_IMAGE_BASE_URL=existing_config.OPENAI_COMPAT_IMAGE_BASE_URL
@@ -574,6 +595,20 @@ def update_env_with_user_config():
         set_codex_email_env(user_config.CODEX_EMAIL)
     if user_config.CODEX_IS_PRO is not None:
         set_codex_is_pro_env(str(user_config.CODEX_IS_PRO))
+    if user_config.ANTIGRAVITY_MODEL:
+        set_antigravity_model_env(user_config.ANTIGRAVITY_MODEL)
+    if user_config.ANTIGRAVITY_ACCESS_TOKEN:
+        set_antigravity_access_token_env(user_config.ANTIGRAVITY_ACCESS_TOKEN)
+    if user_config.ANTIGRAVITY_REFRESH_TOKEN:
+        set_antigravity_refresh_token_env(user_config.ANTIGRAVITY_REFRESH_TOKEN)
+    if user_config.ANTIGRAVITY_TOKEN_EXPIRES:
+        set_antigravity_token_expires_env(user_config.ANTIGRAVITY_TOKEN_EXPIRES)
+    if user_config.ANTIGRAVITY_EMAIL:
+        set_antigravity_email_env(user_config.ANTIGRAVITY_EMAIL)
+    if user_config.ANTIGRAVITY_NAME:
+        set_antigravity_name_env(user_config.ANTIGRAVITY_NAME)
+    if user_config.ANTIGRAVITY_PROJECT_ID:
+        set_antigravity_project_id_env(user_config.ANTIGRAVITY_PROJECT_ID)
     if user_config.OPEN_WEBUI_IMAGE_URL:
         set_open_webui_image_url_env(user_config.OPEN_WEBUI_IMAGE_URL)
     if user_config.OPEN_WEBUI_IMAGE_API_KEY:
@@ -617,3 +652,35 @@ def save_codex_tokens_to_user_config(*, include_model: bool = False) -> None:
         sync_legacy_file_to_provider_settings()
     except Exception as error:
         print(f"Error while saving Codex tokens to user config: {error}")
+
+
+def save_antigravity_tokens_to_user_config(*, include_model: bool = False) -> None:
+    """
+    Write the current in-memory Antigravity OAuth token env vars back to userConfig.json
+    so they survive container restarts. Pass include_model=True on logout, where
+    ANTIGRAVITY_MODEL has already been cleared and should be persisted as cleared.
+    """
+    user_config_path = get_user_config_path_env()
+    if not user_config_path:
+        return
+
+    def merge_antigravity_tokens(existing: dict) -> dict:
+        if include_model:
+            existing["ANTIGRAVITY_MODEL"] = get_antigravity_model_env()
+        existing["ANTIGRAVITY_ACCESS_TOKEN"] = get_antigravity_access_token_env()
+        existing["ANTIGRAVITY_REFRESH_TOKEN"] = get_antigravity_refresh_token_env()
+        existing["ANTIGRAVITY_TOKEN_EXPIRES"] = get_antigravity_token_expires_env()
+        existing["ANTIGRAVITY_EMAIL"] = get_antigravity_email_env()
+        existing["ANTIGRAVITY_NAME"] = get_antigravity_name_env()
+        existing["ANTIGRAVITY_PROJECT_ID"] = get_antigravity_project_id_env()
+        return existing
+
+    try:
+        update_user_config_file(user_config_path, merge_antigravity_tokens)
+        from services.provider_settings import (
+            sync_legacy_file_to_provider_settings,
+        )
+
+        sync_legacy_file_to_provider_settings()
+    except Exception as error:
+        print(f"Error while saving Antigravity tokens to user config: {error}")

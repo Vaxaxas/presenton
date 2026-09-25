@@ -173,6 +173,7 @@ export const updateLLMConfig = (
     openai_compat_image_api_key: "OPENAI_COMPAT_IMAGE_API_KEY",
     openai_compat_image_model: "OPENAI_COMPAT_IMAGE_MODEL",
     codex_model: "CODEX_MODEL",
+    antigravity_model: "ANTIGRAVITY_MODEL",
   };
 
   const configKey = fieldMappings[field];
@@ -201,6 +202,8 @@ export const changeProvider = (
     newConfig.IMAGE_PROVIDER = "gpt-image-1.5";
   } else if (provider === "google") {
     newConfig.IMAGE_PROVIDER = "gemini_flash";
+  } else if (provider === "antigravity") {
+    newConfig.IMAGE_PROVIDER = "antigravity";
   } else {
     newConfig.IMAGE_PROVIDER = "pexels";
   }

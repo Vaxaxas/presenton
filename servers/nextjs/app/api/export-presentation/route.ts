@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
+import os from "os";
 
 import {
   BundledPresentationExportFormat,
@@ -31,23 +32,26 @@ async function readExportRequestBody(req: NextRequest): Promise<{
   return parsed as { format?: unknown; id?: unknown; title?: unknown };
 }
 
-function buildExportDownloadUrl(outPath: string): string {
-  const appDataDirectory = process.env.APP_DATA_DIRECTORY?.trim();
-  if (!appDataDirectory) {
-    throw new Error("APP_DATA_DIRECTORY is required to download exported files.");
-  }
+async function buildExportDownloadUrl(outPath: string): Promise<string> {
+  const appDataDirectory =
+    process.env.APP_DATA_DIRECTORY?.trim() ||
+    path.join(os.tmpdir(), "presenton");
 
   const exportsDirectory = path.join(appDataDirectory, "exports");
-  const relativePath = path.relative(exportsDirectory, outPath);
+  await fs.mkdir(exportsDirectory, { recursive: true });
+  let relativePath = path.relative(exportsDirectory, outPath);
   if (
     !relativePath ||
     relativePath.startsWith("..") ||
     path.isAbsolute(relativePath)
   ) {
-    throw new Error("Export finished outside the configured exports directory.");
+    const dest = path.join(exportsDirectory, path.basename(outPath));
+    await fs.copyFile(outPath, dest);
+    relativePath = path.basename(dest);
   }
 
-  return `/api/export-presentation/file?name=${encodeURIComponent(relativePath)}`;
+  const urlSafePath = relativePath.split(path.sep).join("/");
+  return `/api/export-presentation/file?name=${encodeURIComponent(urlSafePath)}`;
 }
 
 async function moveExportIntoOwnerDirectory(
@@ -58,10 +62,9 @@ async function moveExportIntoOwnerDirectory(
     return outPath;
   }
 
-  const appDataDirectory = process.env.APP_DATA_DIRECTORY?.trim();
-  if (!appDataDirectory) {
-    throw new Error("APP_DATA_DIRECTORY is required to scope exported files.");
-  }
+  const appDataDirectory =
+    process.env.APP_DATA_DIRECTORY?.trim() ||
+    path.join(os.tmpdir(), "presenton");
 
   const exportsDirectory = await fs.realpath(
     path.join(appDataDirectory, "exports")
@@ -81,7 +84,9 @@ async function moveExportIntoOwnerDirectory(
     path.isAbsolute(relativeSource) ||
     relativeSource.split(path.sep)[0] === "users"
   ) {
-    throw new Error("Export finished outside the current user's export directory.");
+    const destination = path.join(ownerDirectory, path.basename(sourcePath));
+    await fs.copyFile(sourcePath, destination);
+    return destination;
   }
 
   const destination = path.join(ownerDirectory, path.basename(sourcePath));
@@ -136,11 +141,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const requestHost = req.headers.get("host");
+    const requestProto = req.headers.get("x-forwarded-proto") || "http";
+    const requestOrigin = requestHost ? `${requestProto}://${requestHost}` : undefined;
+
     const { path: unscopedOutPath } = await runBundledPresentationExport({
       format,
       presentationId: id.trim(),
       title: typeof title === "string" ? title : undefined,
       cookieHeader,
+      baseUrl: requestOrigin,
     });
     const outPath = await moveExportIntoOwnerDirectory(
       unscopedOutPath,
@@ -149,7 +159,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      path: buildExportDownloadUrl(outPath),
+      path: await buildExportDownloadUrl(outPath),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

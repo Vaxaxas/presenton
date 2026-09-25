@@ -19,6 +19,7 @@ import { getLLMConfigValidationError, handleSaveLLMConfig } from '@/utils/storeH
 import { getDefaultOllamaUrl, isOllamaModelAvailable } from '@/utils/providerUtils';
 import { getApiErrorMessage, getApiUrl } from '@/utils/api';
 import CodexConfig from '../CodexConfig';
+import AntigravityConfig from '../AntigravityConfig';
 import { CODEX_MODELS } from '@/utils/codexModels';
 import VertexAzureManualFields from '@/components/VertexAzureManualFields';
 import BedrockManualFields from '@/components/BedrockManualFields';
@@ -35,14 +36,16 @@ const LOCAL_PROVIDERS = ["ollama", "lmstudio"];
 const OTHER_PROVIDERS = Object.values(LLM_PROVIDERS).filter(
     (provider) =>
         provider.value !== "codex" &&
+        provider.value !== "antigravity" &&
         provider.value !== "presenton" &&
         !LOCAL_PROVIDERS.includes(provider.value)
 );
 const OTHER_PROVIDER_VALUES = new Set(OTHER_PROVIDERS.map((provider) => provider.value));
-type TextProviderTab = "chatgpt" | "local" | "other";
+type TextProviderTab = "chatgpt" | "antigravity" | "local" | "other";
 
 const getTextProviderTab = (provider?: string): TextProviderTab => {
     if (provider === "codex" || provider === "chatgpt") return "chatgpt";
+    if (provider === "antigravity") return "antigravity";
     if (LOCAL_PROVIDERS.includes(provider || "")) return "local";
     return "other";
 };
@@ -294,11 +297,14 @@ const PresentonMode = ({
         const nextProvider =
             nextTab === "chatgpt"
                 ? "codex"
-                : nextTab === "local"
-                    ? "ollama"
-                    : OTHER_PROVIDERS[0].value;
+                : nextTab === "antigravity"
+                    ? "antigravity"
+                    : nextTab === "local"
+                        ? "ollama"
+                        : OTHER_PROVIDERS[0].value;
         const providerMatchesTab =
             (nextTab === "chatgpt" && (llmConfig.LLM === "codex" || llmConfig.LLM === "chatgpt")) ||
+            (nextTab === "antigravity" && llmConfig.LLM === "antigravity") ||
             (nextTab === "local" && LOCAL_PROVIDERS.includes(llmConfig.LLM || "")) ||
             (nextTab === "other" && OTHER_PROVIDER_VALUES.has(llmConfig.LLM || ""));
 
@@ -1052,12 +1058,15 @@ const PresentonMode = ({
         const nextProvider =
             textProviderTab === "chatgpt"
                 ? "codex"
-                : textProviderTab === "local"
-                    ? "ollama"
-                    : OTHER_PROVIDERS[0].value;
+                : textProviderTab === "antigravity"
+                    ? "antigravity"
+                    : textProviderTab === "local"
+                        ? "ollama"
+                        : OTHER_PROVIDERS[0].value;
 
         const providerMatchesTab =
-            (textProviderTab === "chatgpt" && llmConfig.LLM === "codex") ||
+            (textProviderTab === "chatgpt" && (llmConfig.LLM === "codex" || llmConfig.LLM === "chatgpt")) ||
+            (textProviderTab === "antigravity" && llmConfig.LLM === "antigravity") ||
             (textProviderTab === "local" && LOCAL_PROVIDERS.includes(llmConfig.LLM || "")) ||
             (textProviderTab === "other" && OTHER_PROVIDER_VALUES.has(llmConfig.LLM || ""));
 
@@ -1153,10 +1162,14 @@ const PresentonMode = ({
                     onValueChange={handleTextProviderTabChange}
                     className="w-full"
                 >
-                    <TabsList className="grid h-14 w-full grid-cols-3 rounded-[10px] border border-[#EDEEEF] bg-[#F6F6F9] p-1 shadow-inner shadow-black/[0.02]">
+                    <TabsList className="grid h-14 w-full grid-cols-4 rounded-[10px] border border-[#EDEEEF] bg-[#F6F6F9] p-1 shadow-inner shadow-black/[0.02]">
                         <TabsTrigger value="chatgpt" className="h-12 gap-2 rounded-[8px] border border-transparent px-4 text-sm font-semibold text-[#5F6062] transition-all hover:text-[#191919] data-[state=active]:border-[#D9D6FE] data-[state=active]:bg-white data-[state=active]:text-[#191919] data-[state=active]:shadow-[0_8px_24px_rgba(16,19,35,0.08)]">
                             <Image src="/providers/openai.png" alt="" width={16} height={16} className="object-contain" />
                             ChatGPT
+                        </TabsTrigger>
+                        <TabsTrigger value="antigravity" className="h-12 gap-2 rounded-[8px] border border-transparent px-4 text-sm font-semibold text-[#5F6062] transition-all hover:text-[#191919] data-[state=active]:border-[#D9D6FE] data-[state=active]:bg-white data-[state=active]:text-[#191919] data-[state=active]:shadow-[0_8px_24px_rgba(16,19,35,0.08)]">
+                            <Image src="/providers/gemini-color.svg" alt="" width={16} height={16} className="object-contain" />
+                            Antigravity
                         </TabsTrigger>
                         <TabsTrigger value="local" className="h-12 gap-2 rounded-[8px] border border-transparent px-4 text-sm font-semibold text-[#5F6062] transition-all hover:text-[#191919] data-[state=active]:border-[#D9D6FE] data-[state=active]:bg-white data-[state=active]:text-[#191919] data-[state=active]:shadow-[0_8px_24px_rgba(16,19,35,0.08)]">
                             <Laptop className="h-4 w-4" />
@@ -1170,9 +1183,11 @@ const PresentonMode = ({
                     <p className="mt-3 text-xs leading-relaxed text-gray-500">
                         {textProviderTab === "chatgpt"
                             ? "Connect your ChatGPT account and choose a supported model."
-                            : textProviderTab === "local"
-                                ? "Run models on your machine with Ollama or LM Studio."
-                                : "Connect hosted AI providers using an API key or custom endpoint."}
+                            : textProviderTab === "antigravity"
+                                ? "Connect your Google Antigravity account (Gemini 3 Pro & Claude models)."
+                                : textProviderTab === "local"
+                                    ? "Run models on your machine with Ollama or LM Studio."
+                                    : "Connect hosted AI providers using an API key or custom endpoint."}
                     </p>
                     <TabsContent value="chatgpt" className="mt-6">
                         <CodexConfig
@@ -1193,9 +1208,9 @@ const PresentonMode = ({
                                     value={llmConfig.CODEX_MODEL || ""}
                                     onValueChange={(value) => {
                                         trackEvent(MixpanelEvent.Onboarding_Text_Model_Selected, {
-                                            provider: "codex",
-                                            model: value,
-                                            text_provider_tab: textProviderTab,
+                                             provider: "codex",
+                                             model: value,
+                                             text_provider_tab: textProviderTab,
                                         });
                                         setLlmConfig(prev => ({ ...prev, CODEX_MODEL: value }));
                                     }}
@@ -1211,6 +1226,18 @@ const PresentonMode = ({
                                 </Select>
                             </div>
                         )}
+                    </TabsContent>
+                    <TabsContent value="antigravity" className="mt-6">
+                        <AntigravityConfig
+                            antigravityModel={llmConfig.ANTIGRAVITY_MODEL || ''}
+                            onInputChange={(value, field) => {
+                                const normalizedField = field === 'antigravity_model' ? 'ANTIGRAVITY_MODEL' : field;
+                                setLlmConfig(prev => ({
+                                    ...prev,
+                                    [normalizedField]: value
+                                }));
+                            }}
+                        />
                     </TabsContent>
                     <TabsContent value="local" className="mt-6">
                         <div className="grid grid-cols-2 gap-3">
