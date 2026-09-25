@@ -59,13 +59,55 @@ async function main() {
     copyDir(nextjsStandalone, path.join(tauriResources, "nextjs"));
   }
 
-  // 4. Download standalone Node.js for Windows if needed
+  // 4. Download standalone Node.js for Windows, macOS, and Linux
+  const nodeDir = path.join(tauriResources, "node");
+  fs.mkdirSync(nodeDir, { recursive: true });
+
   if (process.platform === "win32") {
-    const nodeDest = path.join(tauriResources, "node", "node.exe");
+    const nodeDest = path.join(nodeDir, "node.exe");
     if (!fs.existsSync(nodeDest)) {
       console.log("[tauri-prepare] Fetching Windows node.exe...");
       await downloadFile("https://nodejs.org/dist/v20.18.0/win-x64/node.exe", nodeDest);
     }
+  } else if (process.platform === "darwin") {
+    const nodeDest = path.join(nodeDir, "node");
+    if (!fs.existsSync(nodeDest)) {
+      const arch = process.arch === "arm64" ? "darwin-arm64" : "darwin-x64";
+      console.log(`[tauri-prepare] Fetching macOS Node.js (${arch})...`);
+      const tarUrl = `https://nodejs.org/dist/v20.18.0/node-v20.18.0-${arch}.tar.gz`;
+      const tempTar = path.join(tauriResources, "node.tar.gz");
+      await downloadFile(tarUrl, tempTar);
+      const tempDir = path.join(tauriResources, "node-extract");
+      fs.mkdirSync(tempDir, { recursive: true });
+      require("child_process").execSync(`tar -xzf "${tempTar}" -C "${tempDir}" --strip-components=1`);
+      fs.copyFileSync(path.join(tempDir, "bin", "node"), nodeDest);
+      fs.chmodSync(nodeDest, 0o755);
+      fs.rmSync(tempTar, { force: true });
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  } else if (process.platform === "linux") {
+    const nodeDest = path.join(nodeDir, "node");
+    if (!fs.existsSync(nodeDest)) {
+      console.log("[tauri-prepare] Fetching Linux Node.js (linux-x64)...");
+      const tarUrl = `https://nodejs.org/dist/v20.18.0/node-v20.18.0-linux-x64.tar.gz`;
+      const tempTar = path.join(tauriResources, "node.tar.gz");
+      await downloadFile(tarUrl, tempTar);
+      const tempDir = path.join(tauriResources, "node-extract");
+      fs.mkdirSync(tempDir, { recursive: true });
+      require("child_process").execSync(`tar -xzf "${tempTar}" -C "${tempDir}" --strip-components=1`);
+      fs.copyFileSync(path.join(tempDir, "bin", "node"), nodeDest);
+      fs.chmodSync(nodeDest, 0o755);
+      fs.rmSync(tempTar, { force: true });
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  }
+
+  // Ensure binaries have executable permissions on Unix
+  if (process.platform !== "win32") {
+    const nodeBinary = path.join(nodeDir, "node");
+    if (fs.existsSync(nodeBinary)) fs.chmodSync(nodeBinary, 0o755);
+    const fastapiBinary = path.join(tauriResources, "fastapi", "fastapi");
+    if (fs.existsSync(fastapiBinary)) fs.chmodSync(fastapiBinary, 0o755);
   }
 
   console.log("[tauri-prepare] All Tauri resources prepared successfully!");

@@ -41,6 +41,17 @@
       "nsis": {
         "installMode": "currentUser"
       }
+    },
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37"
+        ]
+      }
     }
   }
 }

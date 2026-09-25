@@ -16,6 +16,16 @@ struct AppState {
     children: Arc<Mutex<Vec<Child>>>,
 }
 
+#[cfg(unix)]
+fn ensure_executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Ok(metadata) = fs::metadata(path) {
+        let mut perms = metadata.permissions();
+        perms.set_mode(0o755);
+        let _ = fs::set_permissions(path, perms);
+    }
+}
+
 fn kill_child_process(child: &mut Child) {
     let pid = child.id();
     #[cfg(target_os = "windows")]
@@ -28,6 +38,9 @@ fn kill_child_process(child: &mut Child) {
     }
     #[cfg(not(target_os = "windows"))]
     {
+        let _ = Command::new("kill")
+            .args(["-9", &pid.to_string()])
+            .status();
         let _ = child.kill();
     }
 }
@@ -126,6 +139,9 @@ fn spawn_services(resource_dir: &Path, children: Arc<Mutex<Vec<Child>>>) {
             .env("APP_DATA_DIRECTORY", &app_data_str)
             .env("TEMPLATES_DIR", &templates_str);
 
+        #[cfg(unix)]
+        ensure_executable(&fastapi_exe);
+
         #[cfg(target_os = "windows")]
         cmd.creation_flags(CREATE_NO_WINDOW);
 
@@ -146,6 +162,9 @@ fn spawn_services(resource_dir: &Path, children: Arc<Mutex<Vec<Child>>>) {
         let nextjs_cwd = nextjs_script.parent().unwrap_or(resource_dir);
         let node_exe = find_file_in_candidates(&node_candidates)
             .unwrap_or_else(|| PathBuf::from("node"));
+
+        #[cfg(unix)]
+        ensure_executable(&node_exe);
 
         let mut cmd = Command::new(node_exe);
         cmd.arg(&nextjs_script)
