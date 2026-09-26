@@ -139,25 +139,52 @@
     let attempts = 0;
     const maxAttempts = 120;
 
+    function navigateToStudio() {
+      statusEl.textContent = "Connecting to presentation studio...";
+      setTimeout(() => {
+        window.location.replace("http://127.0.0.1:3000");
+      }, 300);
+    }
+
     async function checkServer() {
       attempts++;
       try {
-        const res = await fetch("http://127.0.0.1:3000/api/runtime-config", {
+        // 1. Try health endpoint
+        const healthRes = await fetch("http://127.0.0.1:3000/api/health", {
           method: "GET",
           headers: { "Cache-Control": "no-cache" }
-        });
-        if (res.ok || res.status === 200 || res.status === 304) {
-          statusEl.textContent = "Connecting to presentation studio...";
-          setTimeout(() => {
-            window.location.replace("http://127.0.0.1:3000");
-          }, 300);
+        }).catch(() => null);
+
+        if (healthRes && healthRes.status < 500) {
+          navigateToStudio();
           return;
         }
+
+        // 2. Try runtime-config endpoint
+        const configRes = await fetch("http://127.0.0.1:3000/api/runtime-config", {
+          method: "GET",
+          headers: { "Cache-Control": "no-cache" }
+        }).catch(() => null);
+
+        if (configRes && configRes.status < 500) {
+          navigateToStudio();
+          return;
+        }
+
+        // 3. Fallback: try root
+        await fetch("http://127.0.0.1:3000/", {
+          method: "GET",
+          mode: "no-cors",
+          headers: { "Cache-Control": "no-cache" }
+        });
+        // If fetch did not throw network error (ERR_CONNECTION_REFUSED), port 3000 is listening!
+        navigateToStudio();
+        return;
       } catch (err) {
         // server not ready yet
       }
 
-      if (attempts > 10) {
+      if (attempts > 5) {
         statusEl.textContent = `Preparing local AI backend (attempt ${attempts}/${maxAttempts})...`;
       }
       if (attempts >= maxAttempts) {
