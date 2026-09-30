@@ -50,56 +50,49 @@ async function main() {
   copyDir(path.join(rootDir, "servers", "fastapi", "assets"), path.join(tauriResources, "fastapi", "assets"));
 
   // 3. Copy Next.js bundle: prioritize fresh servers/nextjs/.next-build/standalone
-  console.log("[tauri-prepare] Copying Next.js standalone bundle...");
+  console.log("[tauri-prepare] Copying Next.js standalone bundle & static assets...");
   const electronNextjs = path.join(rootDir, "electron", "resources", "nextjs");
-  const nextjsStandalone = path.join(rootDir, "servers", "nextjs", ".next-build", "standalone");
+  const nextjsDir = path.join(rootDir, "servers", "nextjs");
+  const nextjsBuildDir = path.join(nextjsDir, ".next-build");
+  const nextjsStandalone = path.join(nextjsBuildDir, "standalone");
+  const tauriNextjs = path.join(tauriResources, "nextjs");
+
   if (fs.existsSync(nextjsStandalone)) {
-    copyDir(nextjsStandalone, path.join(tauriResources, "nextjs"));
+    copyDir(nextjsStandalone, tauriNextjs);
   } else if (fs.existsSync(electronNextjs)) {
-    copyDir(electronNextjs, path.join(tauriResources, "nextjs"));
+    copyDir(electronNextjs, tauriNextjs);
   }
 
-  // Inject splash probe & single-user auth monkey-patch into standalone server.js
-  const serverJsPath = path.join(tauriResources, "nextjs", "server.js");
-  if (fs.existsSync(serverJsPath)) {
-    let content = fs.readFileSync(serverJsPath, "utf8");
-    if (!content.includes("__PRESENTON_SPLASH_PATCH__")) {
-      const patchCode = `
-// __PRESENTON_SPLASH_PATCH__
-process.env.DISABLE_AUTH = process.env.DISABLE_AUTH || 'true';
-process.env.NEXT_PUBLIC_DISABLE_AUTH = process.env.NEXT_PUBLIC_DISABLE_AUTH || 'true';
-
-const http = require('http');
-const originalEmit = http.Server.prototype.emit;
-http.Server.prototype.emit = function (event, req, res) {
-  if (event === 'request' && req && req.url) {
-    const pathname = req.url.split('?')[0];
-    if (pathname === '/api/health' || (pathname === '/api/runtime-config' && !req.headers.cookie)) {
-      if (req.method === 'OPTIONS') {
-        res.writeHead(204, {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': '*',
-          'Access-Control-Allow-Private-Network': 'true'
-        });
-        res.end();
-        return true;
-      }
-      if (req.method === 'GET') {
-        res.writeHead(200, {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, OPTIONS',
-          'Access-Control-Allow-Headers': '*',
-          'Access-Control-Allow-Private-Network': 'true'
-        });
-        res.end(JSON.stringify({ status: 'ok', configured: true }));
-        return true;
-      }
+  // Next.js standalone does NOT bundle .next-build/static or public automatically.
+  // They must be copied beside server.js (and into nested servers/nextjs if present).
+  const nestedStandaloneDir = path.join(tauriNextjs, "servers", "nextjs");
+  const staticSrc = path.join(nextjsBuildDir, "static");
+  if (fs.existsSync(staticSrc)) {
+    console.log("[tauri-prepare] Copying Next.js static assets (.next-build/static)...");
+    copyDir(staticSrc, path.join(tauriNextjs, ".next-build", "static"));
+    if (fs.existsSync(nestedStandaloneDir)) {
+      copyDir(staticSrc, path.join(nestedStandaloneDir, ".next-build", "static"));
     }
   }
-  return originalEmit.apply(this, arguments);
-};
+
+  const publicSrc = path.join(nextjsDir, "public");
+  if (fs.existsSync(publicSrc)) {
+    console.log("[tauri-prepare] Copying Next.js public directory...");
+    copyDir(publicSrc, path.join(tauriNextjs, "public"));
+    if (fs.existsSync(nestedStandaloneDir)) {
+      copyDir(publicSrc, path.join(nestedStandaloneDir, "public"));
+    }
+  }
+
+  // Inject single-user auth environment variables into standalone server.js
+  const serverJsPath = path.join(tauriNextjs, "server.js");
+  if (fs.existsSync(serverJsPath)) {
+    let content = fs.readFileSync(serverJsPath, "utf8");
+    if (!content.includes("__PRESENTON_STANDALONE_ENV__")) {
+      const patchCode = `
+// __PRESENTON_STANDALONE_ENV__
+process.env.DISABLE_AUTH = process.env.DISABLE_AUTH || 'true';
+process.env.NEXT_PUBLIC_DISABLE_AUTH = process.env.NEXT_PUBLIC_DISABLE_AUTH || 'true';
 `;
       if (content.includes("const require = module.createRequire(import.meta.url)")) {
         content = content.replace(
@@ -110,7 +103,7 @@ http.Server.prototype.emit = function (event, req, res) {
         content = patchCode + "\n" + content;
       }
       fs.writeFileSync(serverJsPath, content, "utf8");
-      console.log("[tauri-prepare] Injected splash & auth monkey-patch into Next.js server.js");
+      console.log("[tauri-prepare] Injected single-user auth env into Next.js server.js");
     }
   }
 
