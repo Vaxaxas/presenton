@@ -248,6 +248,8 @@ fn spawn_services(resource_dir: &Path, children: Arc<Mutex<Vec<Child>>>) {
             .env("HOSTNAME", "127.0.0.1")
             .env("FAST_API_INTERNAL_URL", "http://127.0.0.1:5001")
             .env("NEXT_PUBLIC_FAST_API", "http://127.0.0.1:5001")
+            .env("DISABLE_AUTH", "true")
+            .env("NEXT_PUBLIC_DISABLE_AUTH", "true")
             .env("APP_DATA_DIRECTORY", &app_data_str)
             .env("TEMPLATES_DIR", &templates_str);
 

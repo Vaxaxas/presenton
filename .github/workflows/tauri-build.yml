@@ -24,9 +24,6 @@ jobs:
           - name: macOS Apple Silicon (arm64)
             os: macos-latest
             artifact_name: Presenton-macOS-arm64
-          - name: macOS Intel (x64)
-            os: macos-13
-            artifact_name: Presenton-macOS-x64
           - name: Linux Ubuntu (x64)
             os: ubuntu-22.04
             artifact_name: Presenton-Linux-x64
