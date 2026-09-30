@@ -146,29 +146,27 @@ function isJsonResponse(response: Response): boolean {
  * must not be mistaken for a valid backend response.
  */
 export async function assertBackendReachable(): Promise<void> {
-  let response: Response;
-  try {
-    response = await fetch(getApiUrl("/api/v1/auth/status"), {
-      cache: "no-store",
-      credentials: "include",
-    });
-  } catch {
-    throw new BackendConnectionError();
-  }
-
-  if (!response.ok || !isJsonResponse(response)) {
-    throw new BackendConnectionError();
-  }
-
-  try {
-    const status: unknown = await response.json();
-    if (!status || typeof status !== "object" || Array.isArray(status)) {
-      throw new BackendConnectionError();
+  const maxAttempts = 6;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(getApiUrl("/api/v1/auth/status"), {
+        cache: "no-store",
+        credentials: "include",
+      });
+      if (response.ok && isJsonResponse(response)) {
+        const status: unknown = await response.json();
+        if (status && typeof status === "object" && !Array.isArray(status)) {
+          return;
+        }
+      }
+    } catch {
+      // Backend might still be finishing initial startup
     }
-  } catch (error) {
-    if (isBackendConnectionError(error)) throw error;
-    throw new BackendConnectionError();
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
+  throw new BackendConnectionError();
 }
 
 /**

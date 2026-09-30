@@ -149,37 +149,23 @@
     async function checkServer() {
       attempts++;
       try {
-        // 1. Try health endpoint
+        // 1. Try health endpoint (returns 200 when Next.js and FastAPI are both ready)
         const healthRes = await fetch("http://127.0.0.1:3000/api/health", {
           method: "GET",
           headers: { "Cache-Control": "no-cache" }
         }).catch(() => null);
 
-        if (healthRes && healthRes.status < 500) {
+        if (healthRes && healthRes.ok) {
           navigateToStudio();
           return;
         }
 
-        // 2. Try runtime-config endpoint
-        const configRes = await fetch("http://127.0.0.1:3000/api/runtime-config", {
-          method: "GET",
-          headers: { "Cache-Control": "no-cache" }
-        }).catch(() => null);
-
-        if (configRes && configRes.status < 500) {
-          navigateToStudio();
+        // If health endpoint responded with 503, backend is warming up: wait patiently on splash screen
+        if (healthRes && healthRes.status === 503) {
+          statusEl.textContent = `Initializing AI presentation engine (attempt ${attempts}/${maxAttempts})...`;
+          setTimeout(checkServer, 800);
           return;
         }
-
-        // 3. Fallback: try root
-        await fetch("http://127.0.0.1:3000/", {
-          method: "GET",
-          mode: "no-cors",
-          headers: { "Cache-Control": "no-cache" }
-        });
-        // If fetch did not throw network error (ERR_CONNECTION_REFUSED), port 3000 is listening!
-        navigateToStudio();
-        return;
       } catch (err) {
         // server not ready yet
       }
