@@ -1,0 +1,1 @@
+import{mt as e}from"./client.BO1KtpT_.js";e();

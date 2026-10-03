@@ -1,0 +1,1 @@
+var e=e=>{let t=e&&/^(?:https?:\/\/)?(?:www\.)?cal\.com\/(.+)/.exec(e)?.[1].replace(/\/+$/,``);if(t)return{"data-cal-link":t,"data-cal-namespace":`meet`,"data-cal-config":JSON.stringify({layout:`month_view`,useSlotsViewOnSmallScreen:`true`,theme:`dark`})}};export{e as t};

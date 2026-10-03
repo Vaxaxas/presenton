@@ -1,0 +1,20 @@
+/* MADE BY */
+Site: https://letude.group
+Contact: question[at]letude.group
+Instagram: https://www.instagram.com/letudegroup
+Location: Los Angeles, USA + Remote locations
+
+/* COLLABORATORS */
+Name: Felix Peault (https://flayks.com) - Art Director, Digital Designer, Developer
+Name: Jean Marc Virard (https://4thsex.com) - Creative Director
+Name: Shelby Kay (https://shelbykay.dev) - Front-End Developer
+
+/* SITE */
+Launched: September, 2026
+Standards: HTML5, CSS3, Javascript
+Front-End: Astro, Svelte, Anime.js, OGL (WebGL, GLSL), Tone.js
+Back-End: Sanity
+Hosting: Cloudflare
+Softwares: VSCode
+Creative tools: Figma
+Services: Github, Notion

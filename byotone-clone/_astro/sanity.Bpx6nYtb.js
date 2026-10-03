@@ -1,0 +1,1 @@
+var e={baseUrl:`https://cdn.sanity.io/images/3as6vjo5/production/`};export{e as t};
