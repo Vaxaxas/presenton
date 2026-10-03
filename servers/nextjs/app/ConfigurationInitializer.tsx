@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { setCanChangeKeys, setLLMConfig } from '@/store/slices/userConfig';
 import { hasValidLLMConfig, normalizeLLMConfig } from '@/utils/storeHelpers';
 import { usePathname, useRouter } from 'next/navigation';
@@ -63,6 +63,8 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
   const [hasMetSplashDuration, setHasMetSplashDuration] = useState(
     () => !shouldShowStartupSplash
   );
+  const [isInitialized, setIsInitialized] = useState(false);
+  const validatedRouteRef = useRef<string | null>(null);
   const router = useRouter();
 
   // Fetch user config state
@@ -75,13 +77,16 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
 
   useEffect(() => {
     if (
+      !isInitialized ||
       route === '/' ||
       isSettingsRoute ||
-      route.startsWith('/pdf-maker')
+      route.startsWith('/pdf-maker') ||
+      validatedRouteRef.current === route
     ) {
       return;
     }
 
+    validatedRouteRef.current = route;
     let cancelled = false;
     let selectedProvider: string | undefined;
     const revalidateProviderConfiguration = async () => {
@@ -171,7 +176,7 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
     return () => {
       cancelled = true;
     };
-  }, [canChangeKeys, dispatch, isSettingsRoute, route, router]);
+  }, [canChangeKeys, dispatch, isInitialized, isSettingsRoute, route, router]);
 
   useEffect(() => {
     if (!shouldShowStartupSplash) {
@@ -203,6 +208,8 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
   const fetchUserConfigState = async () => {
     if (route.startsWith("/pdf-maker")) {
       setIsLoading(false);
+      validatedRouteRef.current = route;
+      setIsInitialized(true);
       return;
     }
 
@@ -290,6 +297,8 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
         (llmConfig.LLM !== 'presenton' || hasPresentonCloud);
       if (route.startsWith('/pdf-maker')) {
         setIsLoading(false);
+        validatedRouteRef.current = route;
+        setIsInitialized(true);
         return;
       }
       if (isValid) {
@@ -335,6 +344,8 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
       } else {
         setIsLoading(false);
       }
+      validatedRouteRef.current = route;
+      setIsInitialized(true);
     } else {
       try {
         const res = await fetch("/api/runtime-config", {
@@ -370,6 +381,8 @@ export function ConfigurationInitializer({ children }: { children: React.ReactNo
       } else {
         setIsLoading(false);
       }
+      validatedRouteRef.current = route;
+      setIsInitialized(true);
     }
   }
 
