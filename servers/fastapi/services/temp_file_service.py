@@ -170,9 +170,15 @@ class TempFileService:
         dir_path = self.resolve_temp_path(dir_path, must_exist=True)
         for root, dirs, files in os.walk(dir_path, topdown=False):
             for name in files:
-                os.remove(os.path.join(root, name))
+                try:
+                    os.remove(os.path.join(root, name))
+                except OSError:
+                    pass
             for name in dirs:
-                os.rmdir(os.path.join(root, name))
+                try:
+                    os.rmdir(os.path.join(root, name))
+                except OSError:
+                    pass
 
     def cleanup_temp_dir(self, dir_path: str):
         try:
@@ -182,7 +188,10 @@ class TempFileService:
                 return
             raise
         self._delete_dir_files(dir_path)
-        os.rmdir(dir_path)
+        try:
+            os.rmdir(dir_path)
+        except OSError:
+            pass
 
     def cleanup_base_dir(self):
         self.cleanup_temp_dir(self.base_dir)

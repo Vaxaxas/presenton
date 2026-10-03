@@ -6,6 +6,7 @@ using the user's Antigravity OAuth Bearer token.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 import json
 import logging
 from typing import Any, Iterator, Literal, Optional
@@ -13,7 +14,7 @@ from typing import Any, Iterator, Literal, Optional
 from google.genai import types
 import httpx
 from llmai.google.client import GoogleClient
-from llmai.shared import BaseClientConfig
+from llmai.shared import BaseClientConfig, JSONSchemaResponse, JSONObjectResponse, TextContentPart
 from llmai.shared.base import BaseClient
 import llmai
 
@@ -21,6 +22,71 @@ LOGGER = logging.getLogger(__name__)
 
 PRIMARY_GATEWAY_URL = "https://daily-cloudcode-pa.googleapis.com/v1internal"
 FALLBACK_GATEWAY_URL = "https://cloudcode-pa.googleapis.com/v1internal"
+
+
+GOOGLE_SCHEMA_ALLOWED_KEYS = {
+    "type",
+    "format",
+    "description",
+    "nullable",
+    "enum",
+    "properties",
+    "required",
+    "items",
+    "minItems",
+    "maxItems",
+}
+
+
+def _inline_schema_defs(schema: dict) -> dict:
+    """Dereference $defs and $ref, convert const to enum, and strip keywords unsupported by Google GenAI Schema."""
+    if not isinstance(schema, dict):
+        return schema
+    cloned = deepcopy(schema)
+    defs = cloned.pop("$defs", {})
+    defs.update(cloned.pop("definitions", {}))
+
+    def _clean_node(node):
+        if isinstance(node, dict):
+            while "$ref" in node:
+                ref = node.pop("$ref")
+                name = ref.lstrip("#/").split("/")[-1]
+                target = defs.get(name, {})
+                cleaned_target = _clean_node(target)
+                for k, v in cleaned_target.items():
+                    if k not in node:
+                        node[k] = v
+
+            if "const" in node:
+                const_val = node.pop("const")
+                if "enum" not in node:
+                    node["enum"] = [const_val]
+                if "type" not in node:
+                    if isinstance(const_val, str):
+                        node["type"] = "string"
+                    elif isinstance(const_val, bool):
+                        node["type"] = "boolean"
+                    elif isinstance(const_val, int):
+                        node["type"] = "integer"
+                    elif isinstance(const_val, float):
+                        node["type"] = "number"
+
+            cleaned = {}
+            for k, v in node.items():
+                if k in GOOGLE_SCHEMA_ALLOWED_KEYS:
+                    if k == "properties" and isinstance(v, dict):
+                        cleaned[k] = {pk: _clean_node(pv) for pk, pv in v.items()}
+                    elif k == "items":
+                        cleaned[k] = _clean_node(v)
+                    else:
+                        cleaned[k] = _clean_node(v) if isinstance(v, (dict, list)) else v
+            return cleaned
+        elif isinstance(node, list):
+            return [_clean_node(x) for x in node]
+        return node
+
+    return _clean_node(cloned)
+
 
 # Known model aliases mapping to Antigravity internal model names
 MODEL_ALIASES: dict[str, str] = {
@@ -105,6 +171,7 @@ class AntigravityModelsAdapter:
                 "maxOutputTokens",
                 "responseMimeType",
                 "responseSchema",
+                "responseJsonSchema",
                 "thinkingConfig",
                 "topP",
                 "topK",
@@ -112,6 +179,26 @@ class AntigravityModelsAdapter:
             ]:
                 if k in cfg_dump:
                     gen_config[k] = cfg_dump[k]
+
+            schema = (
+                cfg_dump.get("responseJsonSchema")
+                or cfg_dump.get("responseSchema")
+                or cfg_dump.get("response_json_schema")
+                or cfg_dump.get("response_schema")
+            )
+            if schema:
+                inlined_schema = _inline_schema_defs(schema)
+                gen_config["responseJsonSchema"] = inlined_schema
+                gen_config["responseSchema"] = inlined_schema
+
+            mime_type = cfg_dump.get("responseMimeType") or cfg_dump.get("response_mime_type")
+            if mime_type:
+                gen_config["responseMimeType"] = mime_type
+
+            max_tokens = cfg_dump.get("maxOutputTokens") or cfg_dump.get("max_output_tokens")
+            if max_tokens:
+                gen_config["maxOutputTokens"] = max_tokens
+
             if gen_config:
                 request_body["generationConfig"] = gen_config
 
@@ -126,8 +213,14 @@ class AntigravityModelsAdapter:
                         by_alias=True, exclude_none=True
                     )
 
-            if "tools" in cfg_dump:
-                request_body["tools"] = cfg_dump["tools"]
+            if "tools" in cfg_dump and isinstance(cfg_dump["tools"], list):
+                # Filter out any non-dict tools or WebSearchTool which are incompatible with prediction gateway
+                valid_tools = [
+                    t for t in cfg_dump["tools"]
+                    if isinstance(t, dict) and any(k in t for k in ("functionDeclarations", "function_declarations", "codeExecution", "code_execution"))
+                ]
+                if valid_tools:
+                    request_body["tools"] = valid_tools
 
         return {
             "project": self.project_id,
@@ -242,6 +335,40 @@ class AntigravityClient(GoogleClient):
             project_id=config.project_id,
             base_url=config.base_url,
         )
+
+    def _final_content(
+        self,
+        content: Any,
+        user_tool_calls: Any,
+        response_format: Any,
+    ) -> Any:
+        text_content = "".join(
+            getattr(part, "text", "")
+            for part in (content or [])
+            if hasattr(part, "text") and isinstance(part.text, str)
+        )
+        if text_content and isinstance(
+            response_format, (JSONSchemaResponse, JSONObjectResponse)
+        ):
+            cleaned = text_content.strip()
+            if cleaned.startswith("```"):
+                cleaned = (
+                    cleaned.split("\n", 1)[1]
+                    if "\n" in cleaned
+                    else cleaned[3:]
+                )
+                if cleaned.endswith("```"):
+                    cleaned = cleaned[:-3].strip()
+            try:
+                return json.loads(cleaned)
+            except Exception:
+                try:
+                    import dirtyjson
+                    return dirtyjson.loads(cleaned)
+                except Exception:
+                    pass
+
+        return super()._final_content(content, user_tool_calls, response_format)
 
 
 import sys

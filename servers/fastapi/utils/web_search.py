@@ -26,7 +26,7 @@ from utils.llm_provider import get_llm_provider
 LOGGER = logging.getLogger(__name__)
 DEFAULT_MAX_RESULTS = 5
 NATIVE_WEB_SEARCH_PROVIDERS = frozenset(
-    {LLMProvider.OPENAI, LLMProvider.GOOGLE, LLMProvider.ANTHROPIC, LLMProvider.ANTIGRAVITY}
+    {LLMProvider.OPENAI}
 )
 
 

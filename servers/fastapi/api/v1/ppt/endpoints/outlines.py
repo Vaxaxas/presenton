@@ -204,10 +204,23 @@ async def stream_outlines(
 
             presentation_outlines_text += chunk
 
-        try:
-            presentation_outlines_json = dict(
-                dirtyjson.loads(presentation_outlines_text)
+        raw_outline_text = presentation_outlines_text.strip()
+        if raw_outline_text.startswith("```"):
+            raw_outline_text = (
+                raw_outline_text.split("\n", 1)[1]
+                if "\n" in raw_outline_text
+                else raw_outline_text[3:]
             )
+            if raw_outline_text.endswith("```"):
+                raw_outline_text = raw_outline_text[:-3].strip()
+
+        try:
+            try:
+                presentation_outlines_json = json.loads(raw_outline_text)
+            except Exception:
+                presentation_outlines_json = dict(
+                    dirtyjson.loads(raw_outline_text)
+                )
         except Exception as e:
             traceback.print_exc()
             yield SSEErrorResponse(
