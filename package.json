@@ -9,6 +9,8 @@
     "convert:template": "node scripts/convert-template.mjs",
     "convert:presentation-template": "node scripts/convert-presentation-template.mjs",
     "test:template-converter": "node --test scripts/convert-template.test.mjs scripts/convert-presentation-template.test.mjs",
+    "dev:next": "npm run dev --prefix servers/nextjs",
+    "build:next": "npm run build --prefix servers/nextjs",
     "sync:presentation-export": "node scripts/sync-presentation-export.cjs",
     "sync:presentation-export:force": "node scripts/sync-presentation-export.cjs --force",
     "check:presentation-export": "node scripts/sync-presentation-export.cjs --check-only"
