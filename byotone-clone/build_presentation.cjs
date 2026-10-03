@@ -615,6 +615,273 @@ const presentationStyles = `
     height: 26px !important;
     font-weight: 700 !important;
   }
+
+  /* ==========================================================================
+     TYPOGRAPHY & LAYOUT ENHANCEMENTS (FLUID CLAMP & ZERO-CLS & BALANCE)
+     ========================================================================== */
+  .slide-title {
+    font-size: clamp(2rem, 3.8vw, 3.4rem) !important;
+    font-weight: 800 !important;
+    line-height: 1.18 !important;
+    letter-spacing: -0.022em !important;
+    text-wrap: balance !important;
+  }
+
+  .slide-subtitle {
+    font-size: clamp(1rem, 1.25vw, 1.22rem) !important;
+    line-height: 1.72 !important;
+    letter-spacing: -0.01em !important;
+    text-wrap: pretty !important;
+  }
+
+  .step-title, .tension-title, .contrast-heading, .debate-statement {
+    text-wrap: balance !important;
+    letter-spacing: -0.015em !important;
+  }
+
+  .editorial-list li {
+    line-height: 1.7 !important;
+    letter-spacing: -0.012em !important;
+  }
+
+  .quote-block {
+    font-size: clamp(1.05rem, 1.3vw, 1.25rem) !important;
+    line-height: 1.75 !important;
+    text-wrap: pretty !important;
+  }
+
+  .metric-num {
+    font-size: clamp(2.4rem, 4vw, 3.6rem) !important;
+    font-family: var(--font-mono) !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: -0.03em !important;
+  }
+
+  /* Performance: Content visibility & layout containment */
+  .presentation-slide:not([data-active]) {
+    content-visibility: auto !important;
+    contain-intrinsic-size: 100vw 100vh !important;
+  }
+
+  /* ==========================================================================
+     CINEMATIC WIDESCREEN & LETTERBOX (2.39:1 ANAMORPHIC CINEMA MODE)
+     ========================================================================== */
+  .cinematic-letterbox {
+    position: fixed;
+    left: 0;
+    right: 0;
+    height: 0;
+    background: #000000;
+    z-index: 9990;
+    pointer-events: none;
+    transition: height 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .cinematic-letterbox.top { top: 0; }
+  .cinematic-letterbox.bottom { bottom: 0; }
+
+  body.cinema-mode .cinematic-letterbox {
+    height: clamp(38px, 7.5vh, 76px);
+  }
+
+  body.cinema-mode {
+    --color-paper: #0B0A09 !important;
+    --color-ink: #F7F4F0 !important;
+    --color-ink-muted: rgba(247, 244, 240, 0.76) !important;
+    --color-ink-light: rgba(247, 244, 240, 0.48) !important;
+    --color-ink-faint: rgba(247, 244, 240, 0.1) !important;
+    --color-hairline: rgba(247, 244, 240, 0.15) !important;
+    --color-hairline-strong: rgba(247, 244, 240, 0.35) !important;
+    --color-surface-faint: rgba(247, 244, 240, 0.04) !important;
+    background-color: #0B0A09 !important;
+    color: #F7F4F0 !important;
+  }
+
+  body.cinema-mode .slide-stage-wrapper {
+    filter: drop-shadow(0 14px 42px rgba(0, 0, 0, 0.7));
+  }
+
+  body.cinema-mode .contrast-card,
+  body.cinema-mode .tension-column-bordered,
+  body.cinema-mode .editorial-step-col {
+    background: rgba(18, 16, 15, 0.75) !important;
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border-color: rgba(247, 244, 240, 0.18) !important;
+  }
+
+  /* ==========================================================================
+     CINEMATIC HUD (REC, TIMECODE, 35MM FILM STAMP, CHAPTER)
+     ========================================================================== */
+  .cinematic-hud {
+    position: fixed;
+    top: clamp(12px, 2.2vh, 22px);
+    left: clamp(16px, 3.5vw, 48px);
+    right: clamp(16px, 3.5vw, 48px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 9995;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  body.cinema-mode .cinematic-hud {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .hud-left, .hud-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .hud-rec-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #E11D48;
+    box-shadow: 0 0 10px #E11D48;
+    animation: hudBlink 1s infinite alternate;
+  }
+
+  @keyframes hudBlink {
+    0% { opacity: 0.25; }
+    100% { opacity: 1; }
+  }
+
+  .hud-tag {
+    background: rgba(247, 244, 240, 0.12);
+    color: #F7F4F0;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(247, 244, 240, 0.2);
+    font-weight: 700;
+  }
+
+  .hud-tag-accent {
+    background: rgba(154, 52, 18, 0.4);
+    border-color: rgba(154, 52, 18, 0.7);
+    color: #FFEDD5;
+  }
+
+  /* ==========================================================================
+     THEMATIC VIDEO & CINEMATIC BACKDROP LAYERS
+     ========================================================================== */
+  #cinematic-backdrop-container {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  #thematic-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    filter: brightness(0.68) contrast(1.18) saturate(0.85);
+  }
+
+  body.video-active #thematic-video {
+    opacity: 0.38;
+  }
+
+  body.cinema-mode.video-active #thematic-video {
+    opacity: 0.65;
+  }
+
+  #procedural-film-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    mix-blend-mode: screen;
+  }
+
+  body.procedural-active #procedural-film-canvas {
+    opacity: 0.52;
+  }
+
+  #cinematic-particles-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    transition: opacity 0.5s ease;
+  }
+
+  body.cinema-mode #cinematic-particles-canvas {
+    mix-blend-mode: screen;
+  }
+
+  .film-grain-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+
+  body.cinema-mode .film-grain-overlay {
+    opacity: 0.085;
+  }
+
+  /* Morph Indicator Badge */
+  .particle-morph-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--color-ink-faint);
+    color: var(--color-ink-muted);
+    border: 1px solid var(--color-hairline);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+  }
+
+  .particle-morph-badge:hover {
+    background: var(--color-ink-light);
+    color: var(--color-paper);
+  }
+
+  body.cinema-mode .particle-morph-badge {
+    background: rgba(247, 244, 240, 0.12);
+    color: #F7F4F0;
+    border-color: rgba(247, 244, 240, 0.25);
+  }
+
+  .dock-btn.is-active {
+    background: var(--color-accent-terracotta) !important;
+    color: #FFFFFF !important;
+    border-color: var(--color-accent-terracotta) !important;
+  }
+
 </style>
 `;
 
@@ -1436,8 +1703,11 @@ html = html.replace(/<div class="chapters" style="--chapter-count: \d+"[\s\S]*?<
 
 // Clean header utility links
 const newHeaderPages = `
-<ul class="pages caps-med-bold" data-astro-cid-ywwchgwn>
-  <li data-astro-cid-ywwchgwn><button id="btn-prompter-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 14px;border-radius:99px;font-size:0.8rem;border:1px solid var(--color-hairline);">🎙️ 講稿提示</button></li>
+<ul class="pages caps-med-bold" data-astro-cid-ywwchgwn style="display:flex;align-items:center;gap:6px;">
+  <li data-astro-cid-ywwchgwn><button id="btn-prompter-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：N">🎙️ 講稿提示</button></li>
+  <li data-astro-cid-ywwchgwn><button id="btn-cinema-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：C">🎬 電影模式</button></li>
+  <li data-astro-cid-ywwchgwn><button id="btn-particle-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：P">✨ 粒子形態</button></li>
+  <li data-astro-cid-ywwchgwn><button id="btn-video-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：V">🎥 電影影片</button></li>
 </ul>
 `;
 html = html.replace(/<ul class="pages caps-med-bold" data-astro-cid-ywwchgwn>[\s\S]*?<\/ul>/, newHeaderPages.trim());
@@ -1458,6 +1728,35 @@ if (scriptPos !== -1) {
 
 // 7. Inject Presenter Controls, Prompter, and Footer
 const presenterScript = `
+<!-- Cinematic Widescreen Letterbox Bars -->
+<div class="cinematic-letterbox top" aria-hidden="true"></div>
+<div class="cinematic-letterbox bottom" aria-hidden="true"></div>
+
+<!-- Thematic Video & Multi-Layer Particle Backdrop -->
+<div id="cinematic-backdrop-container" aria-hidden="true">
+  <video id="thematic-video" playsinline loop muted autoplay preload="auto">
+    <source src="https://assets.mixkit.co/videos/preview/mixkit-slow-motion-of-water-splashing-in-a-dark-room-42861-large.mp4" type="video/mp4">
+  </video>
+  <canvas id="procedural-film-canvas"></canvas>
+  <canvas id="cinematic-particles-canvas"></canvas>
+  <div class="film-grain-overlay"></div>
+</div>
+
+<!-- Cinematic HUD -->
+<div class="cinematic-hud" id="cinematic-hud" aria-hidden="true">
+  <div class="hud-left">
+    <span class="hud-rec-dot"></span>
+    <span style="font-weight:800;color:#E11D48;">REC [LIVE]</span>
+    <span id="hud-timecode" style="color:#F7F4F0;">00:04:18:24</span>
+    <span class="hud-tag">4K 2.39:1</span>
+    <span class="hud-tag hud-tag-accent" id="hud-morph-name">形態 1/4：剛性拘束網絡</span>
+  </div>
+  <div class="hud-right">
+    <span class="hud-tag" id="hud-slide-title">CH 01 封面導讀</span>
+    <span class="hud-tag" style="opacity:0.8;">35MM TONE • 24 FPS</span>
+  </div>
+</div>
+
 <!-- Floating Prompter Modal -->
 <div class="prompter-modal" id="prompter-modal" role="dialog" aria-label="講者提示視窗">
   <div class="prompter-header">
@@ -1474,12 +1773,15 @@ const presenterScript = `
   <button class="dock-btn" id="dock-prev-btn" aria-label="上一頁">▲ 前一頁</button>
   <span class="dock-counter" id="dock-counter">01 / 12</span>
   <button class="dock-btn" id="dock-next-btn" aria-label="下一頁">▼ 下一頁</button>
-  <button class="dock-btn" id="dock-notes-toggle" style="margin-left:6px;border-left:1px solid var(--color-hairline);padding-left:10px;">🎙️ 講稿提示</button>
+  <span class="particle-morph-badge" id="dock-morph-tag" title="點擊切換粒子形態（快捷鍵 P）">✨ 剛性網絡</span>
+  <button class="dock-btn" id="dock-notes-toggle" style="margin-left:4px;border-left:1px solid var(--color-hairline);padding-left:10px;" title="快捷鍵 N">🎙️ 講稿</button>
+  <button class="dock-btn" id="dock-cinema-toggle" title="快捷鍵 C">🎬 電影</button>
+  <button class="dock-btn" id="dock-video-toggle" title="快捷鍵 V">🎥 影片</button>
 </nav>
 
 <!-- Clean Footer Bar -->
 <div class="presentation-footer-bar">
-  <span>高師大通識教育《性別與文化》 ｜ 第 3 組全體 10 位組員</span>
+  <span>高師大通識教育《性別與文化》 ｜ 第 3 組全體 10 位組員 ｜ 導讀《臺灣性別100+問》</span>
 </div>
 
 <script>
@@ -1497,6 +1799,19 @@ const presenterScript = `
     const prompterClose = document.getElementById('prompter-close-btn');
     const prompterContent = document.getElementById('prompter-content');
 
+    const headerCinemaBtn = document.getElementById('btn-cinema-toggle');
+    const dockCinemaBtn = document.getElementById('dock-cinema-toggle');
+    const headerParticleBtn = document.getElementById('btn-particle-toggle');
+    const dockMorphTag = document.getElementById('dock-morph-tag');
+    const headerVideoBtn = document.getElementById('btn-video-toggle');
+    const dockVideoBtn = document.getElementById('dock-video-toggle');
+
+    const hudTimecode = document.getElementById('hud-timecode');
+    const hudMorphName = document.getElementById('hud-morph-name');
+    const hudSlideTitle = document.getElementById('hud-slide-title');
+    const thematicVideo = document.getElementById('thematic-video');
+
+    // 1. Current Slide & State Management
     function getCurrentSlideIndex() {
       const activeIdx = slides.findIndex(s => s.hasAttribute('data-active'));
       if (activeIdx !== -1) return activeIdx;
@@ -1506,6 +1821,34 @@ const presenterScript = `
         if (rect.top + window.scrollY <= scrollMid) return i;
       }
       return 0;
+    }
+
+    const MORPH_DEFINITIONS = [
+      { id: 0, name: '剛性拘束網絡', short: '✨ 剛性網絡', desc: 'Allan Johnson 父權結構性控制網格', slides: [0, 1, 2] },
+      { id: 1, name: '潑水漣漪與火盆餘燼', short: '💧 潑水餘燼', desc: '婚俗潑水不可回與過火爐改姓抗爭', slides: [3, 4, 5] },
+      { id: 2, name: '數位故障與雜訊風暴', short: '⚡ 數位雜訊', desc: '網路厭女語言與私密影像寒蟬效應', slides: [6, 7, 8] },
+      { id: 3, name: '雙性化柔和星雲', short: '🌌 雙性星雲', desc: '打破二元框架與包容共感之流動', slides: [9, 10, 11] }
+    ];
+
+    let currentMorphState = 0;
+    let isCinemaMode = false;
+    let isVideoMode = false;
+
+    function getMorphForSlide(slideIdx) {
+      if (slideIdx <= 2) return 0;
+      if (slideIdx <= 5) return 1;
+      if (slideIdx <= 8) return 2;
+      return 3;
+    }
+
+    function setMorphState(stateIdx, updateParticles = true) {
+      currentMorphState = (stateIdx + 4) % 4;
+      const def = MORPH_DEFINITIONS[currentMorphState];
+      if (dockMorphTag) dockMorphTag.textContent = def.short;
+      if (hudMorphName) hudMorphName.textContent = '形態 ' + (currentMorphState + 1) + '/4：' + def.name;
+      if (updateParticles && window.CinematicParticles) {
+        window.CinematicParticles.setMorphState(currentMorphState);
+      }
     }
 
     function updateCounterAndPrompter() {
@@ -1522,6 +1865,14 @@ const presenterScript = `
           }
         }
       }
+      // Update HUD Slide Title
+      if (hudSlideTitle && slides[idx]) {
+        const titleEl = slides[idx].querySelector('.slide-title');
+        const shortTitle = titleEl ? titleEl.textContent.trim().split(/[：\n]/)[0] : ('Slide ' + (idx + 1));
+        hudSlideTitle.textContent = 'CH ' + String(idx + 1).padStart(2, '0') + ' ' + shortTitle.slice(0, 12);
+      }
+      // Auto-sync particle morph if user hasn't manually overridden recently
+      setMorphState(getMorphForSlide(idx), true);
     }
 
     function goToSlide(targetIdx) {
@@ -1547,7 +1898,7 @@ const presenterScript = `
     });
 
     if (window.location.hash) {
-      const match = window.location.hash.match(/slide-(\d+)/);
+      const match = window.location.hash.match(/slide-(\\d+)/);
       if (match) {
         const sIdx = parseInt(match[1], 10) - 1;
         if (sIdx >= 0 && sIdx < slides.length) {
@@ -1559,6 +1910,48 @@ const presenterScript = `
     if (prevBtn) prevBtn.addEventListener('click', () => goToSlide(getCurrentSlideIndex() - 1));
     if (nextBtn) nextBtn.addEventListener('click', () => goToSlide(getCurrentSlideIndex() + 1));
 
+    // 2. Cinema Mode Toggle
+    function toggleCinemaMode() {
+      isCinemaMode = !isCinemaMode;
+      document.body.classList.toggle('cinema-mode', isCinemaMode);
+      if (headerCinemaBtn) headerCinemaBtn.classList.toggle('is-active', isCinemaMode);
+      if (dockCinemaBtn) dockCinemaBtn.classList.toggle('is-active', isCinemaMode);
+    }
+
+    if (headerCinemaBtn) headerCinemaBtn.addEventListener('click', toggleCinemaMode);
+    if (dockCinemaBtn) dockCinemaBtn.addEventListener('click', toggleCinemaMode);
+
+    // 3. Particle Morph Cycle
+    function cycleParticleMorph() {
+      setMorphState(currentMorphState + 1, true);
+    }
+
+    if (headerParticleBtn) headerParticleBtn.addEventListener('click', cycleParticleMorph);
+    if (dockMorphTag) dockMorphTag.addEventListener('click', cycleParticleMorph);
+
+    // 4. Video Backdrop Toggle
+    function toggleVideoMode() {
+      isVideoMode = !isVideoMode;
+      document.body.classList.toggle('video-active', isVideoMode);
+      document.body.classList.toggle('procedural-active', !isVideoMode);
+      if (headerVideoBtn) headerVideoBtn.classList.toggle('is-active', isVideoMode);
+      if (dockVideoBtn) dockVideoBtn.classList.toggle('is-active', isVideoMode);
+      if (thematicVideo) {
+        if (isVideoMode) {
+          thematicVideo.play().catch(() => {});
+        } else {
+          thematicVideo.pause();
+        }
+      }
+    }
+
+    if (headerVideoBtn) headerVideoBtn.addEventListener('click', toggleVideoMode);
+    if (dockVideoBtn) dockVideoBtn.addEventListener('click', toggleVideoMode);
+
+    // Default: start procedural background
+    document.body.classList.add('procedural-active');
+
+    // 5. Prompter Toggle
     function togglePrompter() {
       if (!prompterModal) return;
       prompterModal.classList.toggle('is-open');
@@ -1567,7 +1960,6 @@ const presenterScript = `
 
     if (notesToggle) notesToggle.addEventListener('click', togglePrompter);
     if (headerPrompterBtn) headerPrompterBtn.addEventListener('click', togglePrompter);
-
     if (prompterClose && prompterModal) {
       prompterClose.addEventListener('click', () => {
         prompterModal.classList.remove('is-open');
@@ -1577,25 +1969,366 @@ const presenterScript = `
     window.addEventListener('scroll', updateCounterAndPrompter, { passive: true });
     updateCounterAndPrompter();
 
+    // 6. Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      if (['ArrowDown', 'ArrowRight', 'PageDown', ' '].includes(e.key)) {
-        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-          e.preventDefault();
-          goToSlide(getCurrentSlideIndex() + 1);
-        }
-      } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) {
-        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-          e.preventDefault();
-          goToSlide(getCurrentSlideIndex() - 1);
-        }
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      const key = e.key.toLowerCase();
+      if (['arrowdown', 'arrowright', 'pagedown', ' '].includes(key)) {
+        e.preventDefault();
+        goToSlide(getCurrentSlideIndex() + 1);
+      } else if (['arrowup', 'arrowleft', 'pageup'].includes(key)) {
+        e.preventDefault();
+        goToSlide(getCurrentSlideIndex() - 1);
+      } else if (key === 'c') {
+        e.preventDefault();
+        toggleCinemaMode();
+      } else if (key === 'v') {
+        e.preventDefault();
+        toggleVideoMode();
+      } else if (key === 'p') {
+        e.preventDefault();
+        cycleParticleMorph();
+      } else if (key === 'n') {
+        e.preventDefault();
+        togglePrompter();
       }
     });
+
+    // 7. Timecode Simulator (24 FPS)
+    let frameCount = 0;
+    setInterval(() => {
+      frameCount++;
+      const frames = frameCount % 24;
+      const totalSec = Math.floor(frameCount / 24);
+      const sec = totalSec % 60;
+      const min = Math.floor(totalSec / 60) % 60;
+      const hrs = Math.floor(totalSec / 3600);
+      if (hudTimecode) {
+        hudTimecode.textContent =
+          String(hrs).padStart(2, '0') + ':' +
+          String(min).padStart(2, '0') + ':' +
+          String(sec).padStart(2, '0') + ':' +
+          String(frames).padStart(2, '0');
+      }
+    }, 1000 / 24);
+
+    // =========================================================================
+    // MULTI-LAYER CINEMATIC PARTICLE & FILM ENGINE
+    // =========================================================================
+    (function initCinematicEngine() {
+      const pCanvas = document.getElementById('cinematic-particles-canvas');
+      const fCanvas = document.getElementById('procedural-film-canvas');
+      if (!pCanvas) return;
+
+      const pCtx = pCanvas.getContext('2d');
+      const fCtx = fCanvas ? fCanvas.getContext('2d') : null;
+
+      let width = window.innerWidth;
+      let height = window.innerHeight;
+      let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+        pCanvas.width = width * dpr;
+        pCanvas.height = height * dpr;
+        pCanvas.style.width = width + 'px';
+        pCanvas.style.height = height + 'px';
+        pCtx.scale(dpr, dpr);
+
+        if (fCanvas && fCtx) {
+          fCanvas.width = width * dpr;
+          fCanvas.height = height * dpr;
+          fCanvas.style.width = width + 'px';
+          fCanvas.style.height = height + 'px';
+          fCtx.scale(dpr, dpr);
+        }
+      }
+
+      window.addEventListener('resize', resize, { passive: true });
+      resize();
+
+      // Mouse tracking
+      const mouse = { x: -1000, y: -1000, targetX: -1000, targetY: -1000 };
+      window.addEventListener('mousemove', (e) => {
+        mouse.targetX = e.clientX;
+        mouse.targetY = e.clientY;
+      }, { passive: true });
+
+      // Layer 1: Ambient Micro-Dust (500 particles)
+      const dustCount = 450;
+      const dust = [];
+      for (let i = 0; i < dustCount; i++) {
+        dust.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius: Math.random() * 1.6 + 0.6,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35 - 0.1,
+          alpha: Math.random() * 0.35 + 0.1,
+          pulse: Math.random() * Math.PI * 2
+        });
+      }
+
+      // Layer 2: Midground Semantic Morph Particles (220 particles)
+      const semanticCount = 200;
+      const semantic = [];
+      for (let i = 0; i < semanticCount; i++) {
+        semantic.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          originX: 0,
+          originY: 0,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          radius: Math.random() * 2.5 + 1.2,
+          alpha: Math.random() * 0.6 + 0.3,
+          color: '#9A3412',
+          glitchTimer: 0,
+          glitchOffset: 0,
+          angle: Math.random() * Math.PI * 2,
+          distance: Math.random() * 280 + 40
+        });
+      }
+
+      // Layer 3: Foreground Bokeh (12 large soft orbs)
+      const bokehCount = 12;
+      const bokeh = [];
+      for (let i = 0; i < bokehCount; i++) {
+        bokeh.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius: Math.random() * 32 + 20,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          alpha: Math.random() * 0.07 + 0.03
+        });
+      }
+
+      let activeMorph = 0;
+      let morphProgress = 1; // 0 to 1 transition
+
+      window.CinematicParticles = {
+        setMorphState: function(newMorph) {
+          if (newMorph !== activeMorph) {
+            activeMorph = newMorph;
+            morphProgress = 0;
+          }
+        }
+      };
+
+      // Animation Loop
+      let time = 0;
+
+      function render() {
+        time += 0.016;
+        if (morphProgress < 1) {
+          morphProgress = Math.min(1, morphProgress + 0.03);
+        }
+
+        // Smooth mouse
+        mouse.x += (mouse.targetX - mouse.x) * 0.1;
+        mouse.y += (mouse.targetY - mouse.y) * 0.1;
+
+        // Clear Particle Canvas
+        pCtx.clearRect(0, 0, width, height);
+
+        const isDark = document.body.classList.contains('cinema-mode');
+
+        // Render Layer 1: Ambient Dust
+        pCtx.fillStyle = isDark ? '#F7F4F0' : '#1C1917';
+        for (let i = 0; i < dust.length; i++) {
+          const d = dust[i];
+          d.x += d.vx;
+          d.y += d.vy;
+          d.pulse += 0.02;
+
+          if (d.x < 0) d.x = width;
+          if (d.x > width) d.x = 0;
+          if (d.y < 0) d.y = height;
+          if (d.y > height) d.y = 0;
+
+          const dynamicAlpha = d.alpha * (0.7 + Math.sin(d.pulse) * 0.3) * (isDark ? 0.45 : 0.25);
+          pCtx.globalAlpha = dynamicAlpha;
+          pCtx.beginPath();
+          pCtx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+          pCtx.fill();
+        }
+
+        // Render Layer 2: Midground Semantic Morph Particles
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        for (let i = 0; i < semantic.length; i++) {
+          const p = semantic[i];
+
+          // Behavior based on activeMorph
+          if (activeMorph === 0) {
+            // State 0: 剛性拘束網格 (Patriarchy Grid / Rigid Mesh)
+            const cols = 20;
+            const rows = 10;
+            const gridX = (i % cols) * (width / (cols - 1));
+            const gridY = Math.floor(i / cols) * (height / (rows - 1));
+
+            // Spring towards grid points with subtle tension breathing
+            p.x += (gridX - p.x) * 0.05 + Math.sin(time * 1.5 + i) * 0.4;
+            p.y += (gridY - p.y) * 0.05 + Math.cos(time * 1.5 + i) * 0.4;
+            p.color = isDark ? '#FCA5A5' : '#9A3412';
+            p.radius = 1.8;
+          } else if (activeMorph === 1) {
+            // State 1: 潑水漣漪與火盆餘燼 (Water Ripples & Ember Sparks)
+            if (i % 2 === 0) {
+              // Droplets falling down
+              p.y += 2.4 + (i % 3);
+              p.x += Math.sin(time * 2 + i) * 0.6;
+              if (p.y > height) {
+                p.y = 0;
+                p.x = Math.random() * width;
+              }
+              p.color = isDark ? '#93C5FD' : '#1E3A8A';
+              p.radius = 2.2;
+            } else {
+              // Embers rising up
+              p.y -= 1.8 + (i % 2);
+              p.x += (Math.random() - 0.5) * 1.2;
+              if (p.y < 0) {
+                p.y = height;
+                p.x = Math.random() * width;
+              }
+              p.color = isDark ? '#FDBA74' : '#C2410C';
+              p.radius = 1.6;
+            }
+          } else if (activeMorph === 2) {
+            // State 2: 數位信號故障與雜訊風暴 (Cyber Glitch & Noise)
+            p.glitchTimer--;
+            if (p.glitchTimer <= 0) {
+              p.glitchTimer = Math.floor(Math.random() * 25) + 5;
+              p.glitchOffset = (Math.random() - 0.5) * 45;
+            }
+            p.x += (Math.random() - 0.5) * 3 + p.glitchOffset * 0.1;
+            p.y += (i % 3 === 0 ? 3.5 : 1.2);
+            if (p.x < 0) p.x = width;
+            if (p.x > width) p.x = 0;
+            if (p.y > height) p.y = 0;
+            p.color = (i % 3 === 0) ? '#06B6D4' : (i % 3 === 1 ? '#8B5CF6' : '#EC4899');
+            p.radius = (i % 4 === 0) ? 3.2 : 1.4;
+          } else {
+            // State 3: 雙性化柔和星雲 (Fluid Nebula & Orbiting Rings)
+            p.angle += 0.008 + (i % 5) * 0.002;
+            const rx = p.distance * 1.6;
+            const ry = p.distance * 0.9;
+            const targetX = centerX + Math.cos(p.angle) * rx;
+            const targetY = centerY + Math.sin(p.angle) * ry;
+
+            p.x += (targetX - p.x) * 0.04;
+            p.y += (targetY - p.y) * 0.04;
+            p.color = (i % 2 === 0) ? '#FB923C' : '#2DD4BF';
+            p.radius = 2.5 + Math.sin(time * 3 + i) * 0.8;
+          }
+
+          // Mouse Repulsion
+          const dx = p.x - mouse.x;
+          const dy = p.y - mouse.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120 && dist > 0) {
+            const force = (120 - dist) / 120;
+            p.x += (dx / dist) * force * 14;
+            p.y += (dy / dist) * force * 14;
+          }
+
+          // Draw Particle
+          pCtx.globalAlpha = p.alpha * (isDark ? 0.75 : 0.55);
+          pCtx.fillStyle = p.color;
+          pCtx.beginPath();
+          pCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          pCtx.fill();
+
+          // Connect lines in State 0
+          if (activeMorph === 0 && i < semantic.length - 1) {
+            const nextP = semantic[i + 1];
+            const lineDist = Math.hypot(p.x - nextP.x, p.y - nextP.y);
+            if (lineDist < 90) {
+              pCtx.strokeStyle = p.color;
+              pCtx.globalAlpha = (1 - lineDist / 90) * (isDark ? 0.25 : 0.15);
+              pCtx.lineWidth = 1;
+              pCtx.beginPath();
+              pCtx.moveTo(p.x, p.y);
+              pCtx.lineTo(nextP.x, nextP.y);
+              pCtx.stroke();
+            }
+          }
+        }
+
+        // Render Layer 3: Foreground Bokeh
+        for (let i = 0; i < bokeh.length; i++) {
+          const b = bokeh[i];
+          b.x += b.vx;
+          b.y += b.vy;
+          if (b.x < -100) b.x = width + 100;
+          if (b.x > width + 100) b.x = -100;
+          if (b.y < -100) b.y = height + 100;
+          if (b.y > height + 100) b.y = -100;
+
+          const grad = pCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
+          if (isDark) {
+            grad.addColorStop(0, 'rgba(255, 237, 213, ' + b.alpha * 1.5 + ')');
+            grad.addColorStop(1, 'rgba(255, 237, 213, 0)');
+          } else {
+            grad.addColorStop(0, 'rgba(154, 52, 18, ' + b.alpha * 0.8 + ')');
+            grad.addColorStop(1, 'rgba(154, 52, 18, 0)');
+          }
+
+          pCtx.globalAlpha = 1;
+          pCtx.fillStyle = grad;
+          pCtx.beginPath();
+          pCtx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+          pCtx.fill();
+        }
+
+        // Render Procedural Film Canvas (when active)
+        if (fCanvas && fCtx && document.body.classList.contains('procedural-active')) {
+          fCtx.clearRect(0, 0, width, height);
+
+          // Generate slow-motion volumetric film beams matching activeMorph
+          const filmGrad = fCtx.createLinearGradient(
+            width * 0.3 + Math.sin(time * 0.4) * width * 0.2, 0,
+            width * 0.7 + Math.cos(time * 0.3) * width * 0.2, height
+          );
+
+          if (activeMorph === 0) {
+            filmGrad.addColorStop(0, 'rgba(154, 52, 18, 0.08)');
+            filmGrad.addColorStop(0.5, 'rgba(28, 25, 23, 0.03)');
+            filmGrad.addColorStop(1, 'rgba(30, 58, 138, 0.07)');
+          } else if (activeMorph === 1) {
+            filmGrad.addColorStop(0, 'rgba(30, 58, 138, 0.12)');
+            filmGrad.addColorStop(0.5, 'rgba(194, 65, 12, 0.06)');
+            filmGrad.addColorStop(1, 'rgba(15, 23, 42, 0.08)');
+          } else if (activeMorph === 2) {
+            filmGrad.addColorStop(0, 'rgba(6, 182, 212, 0.14)');
+            filmGrad.addColorStop(0.4, 'rgba(139, 92, 246, 0.08)');
+            filmGrad.addColorStop(1, 'rgba(236, 72, 153, 0.06)');
+          } else {
+            filmGrad.addColorStop(0, 'rgba(251, 146, 60, 0.11)');
+            filmGrad.addColorStop(0.5, 'rgba(45, 212, 191, 0.08)');
+            filmGrad.addColorStop(1, 'rgba(154, 52, 18, 0.09)');
+          }
+
+          fCtx.fillStyle = filmGrad;
+          fCtx.fillRect(0, 0, width, height);
+        }
+
+        requestAnimationFrame(render);
+      }
+
+      render();
+    })();
   })();
 </script>
 </body>
 </html>
 `;
-
 html += '\n' + presenterScript.trim();
 
 // 8. Update Page Title and strip is-preloading class
