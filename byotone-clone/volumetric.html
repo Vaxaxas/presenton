@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Byotōne 體積視訊粒子引擎 ｜ Volumetric Video & Pointillism Halftone</title>
+  <link rel="icon" href="./favicon.ico">
+  <style>
+    :root {
+      --bg: #090b0d;
+      --card-bg: rgba(14, 18, 22, 0.78);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --ink: #eef2f5;
+      --ink-muted: #8b96a0;
+      --accent-emerald: #55c49b;
+      --accent-cyan: #64dfdf;
+      --accent-amber: #e5b078;
+      --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-sans: 'General Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #webgl-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: block;
+    }
+
+    /* Film grain noise overlay */
+    .film-grain-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0.07;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* Cinematic vignette */
+    .vignette-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,0.78) 95%);
+    }
+
+    /* Top Navigation HUD */
+    .header-hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+      background: linear-gradient(180deg, rgba(9,11,13,0.85) 0%, transparent 100%);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-badge {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(85, 196, 155, 0.12);
+      border: 1px solid rgba(85, 196, 155, 0.3);
+      color: var(--accent-emerald);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-badge .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 8px var(--accent-emerald);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .brand-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #fff;
+    }
+
+    .brand-subtitle {
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+      font-family: var(--font-mono);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hud-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .hud-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
+    .hud-btn.active {
+      background: rgba(85, 196, 155, 0.18);
+      border-color: var(--accent-emerald);
+      color: #fff;
+    }
+
+    /* Floating Controller Panel */
+    .control-panel {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      width: 320px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 18px 20px;
+      z-index: 10;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+    }
+
+    .control-panel.is-collapsed {
+      transform: translateX(340px);
+      opacity: 0.5;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle-collapse-btn {
+      background: transparent;
+      border: none;
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 2px 6px;
+      line-height: 1;
+    }
+
+    .toggle-collapse-btn:hover {
+      color: #fff;
+    }
+
+    .ctrl-group {
+      margin-bottom: 14px;
+    }
+
+    .ctrl-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--ink-muted);
+      margin-bottom: 6px;
+    }
+
+    .ctrl-val {
+      color: var(--accent-emerald);
+      font-weight: 600;
+    }
+
+    .ctrl-slider {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .ctrl-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: 2px solid var(--accent-emerald);
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(85, 196, 155, 0.5);
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .preset-chip {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 8px;
+      font-size: 0.72rem;
+      border-radius: 6px;
+      color: var(--ink-muted);
+      cursor: pointer;
+      font-family: var(--font-mono);
+      text-align: center;
+      transition: all 0.15s ease;
+    }
+
+    .preset-chip:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .preset-chip.active {
+      background: rgba(85, 196, 155, 0.16);
+      border-color: var(--accent-emerald);
+      color: #fff;
+    }
+
+    /* Dissolve Trigger Button */
+    .dissolve-trigger-btn {
+      width: 100%;
+      margin-top: 10px;
+      background: linear-gradient(135deg, rgba(85,196,155,0.2) 0%, rgba(100,223,223,0.15) 100%);
+      border: 1px solid rgba(85,196,155,0.4);
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      padding: 9px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .dissolve-trigger-btn:hover {
+      background: linear-gradient(135deg, rgba(85,196,155,0.3) 0%, rgba(100,223,223,0.25) 100%);
+      box-shadow: 0 0 14px rgba(85,196,155,0.3);
+    }
+
+    /* Bottom Video Timeline HUD */
+    .timeline-hud {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(840px, 92vw);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 10;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+    }
+
+    .play-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--card-border);
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .play-btn:hover {
+      background: var(--accent-emerald);
+      color: #090b0d;
+      border-color: var(--accent-emerald);
+    }
+
+    .time-readout {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--ink-muted);
+      flex-shrink: 0;
+      letter-spacing: 0.05em;
+    }
+
+    .scrub-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .scrub-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent-emerald), var(--accent-cyan));
+      border-radius: 3px;
+    }
+
+    .scrub-thumb {
+      position: absolute;
+      top: 50%;
+      left: 0%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 0 6px rgba(0,0,0,0.6);
+      pointer-events: none;
+    }
+
+    /* PIP RGB-D Source Monitor */
+    .pip-monitor {
+      position: fixed;
+      bottom: 96px;
+      left: 24px;
+      width: 280px;
+      background: rgba(14, 18, 22, 0.88);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 8px;
+      z-index: 10;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.6);
+      backdrop-filter: blur(12px);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .pip-monitor.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
+    }
+
+    .pip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--ink-muted);
+      margin-bottom: 6px;
+    }
+
+    .pip-video {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      display: block;
+      background: #000;
+    }
+
+    /* Touch / Orbit indicator */
+    .orbit-hint {
+      position: fixed;
+      bottom: 24px;
+      left: 28px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.35);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      .control-panel {
+        top: auto;
+        bottom: 96px;
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-height: 48vh;
+        overflow-y: auto;
+      }
+      .pip-monitor {
+        display: none;
+      }
+      .timeline-hud {
+        bottom: 16px;
+        padding: 8px 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Film grain & vignette -->
+  <div class="film-grain-overlay"></div>
+  <div class="vignette-overlay"></div>
+
+  <!-- WebGL Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- Hidden Source Video (RGB-D Side-by-Side) -->
+  <video id="rgbd-video" src="./assets/dance-rgbd-720p.mp4" playsinline webkit-playsinline muted loop crossorigin="anonymous" style="display:none;"></video>
+
+  <!-- Top Navigation HUD -->
+  <header class="header-hud">
+    <div class="brand-wrap">
+      <div class="brand-badge">
+        <span class="pulse-dot"></span>
+        <span>Depth-Anything Volumetric</span>
+      </div>
+      <div>
+        <div class="brand-title">Byotōne 體積視訊點描粒子</div>
+        <div class="brand-subtitle">RGB-D 深度位移 ｜ 底片噪點 ｜ 半色調明暗對照</div>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="hud-btn" id="btn-toggle-pip">
+        <span>📹 來源視訊</span>
+      </button>
+      <button class="hud-btn active" id="btn-toggle-orbit">
+        <span>🔄 3D 視差運鏡</span>
+      </button>
+      <a class="hud-btn" href="./index.html">
+        <span>📖 返回專案簡報</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Floating Control Panel -->
+  <aside class="control-panel" id="control-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <span>⚙️ 粒子著色器參數控制</span>
+      </div>
+      <button class="toggle-collapse-btn" id="btn-collapse" title="收合面板">−</button>
+    </div>
+
+    <!-- Z-Depth Scale -->
+    <div class="ctrl-group">
+      <div class="ctrl-label-row">
+        <span>體積深度拉伸 (Depth Extrusion)</span>
+        <span class="ctrl-val" id="val-depth">42.0</span>
+      </div>
+      <input type="range" class="ctrl-slider" id="slider-depth" min="0" max="100" step="1" value="42">
+    </div>
+
+    <!-- Point Size -->
+    <div class="ctrl-group">
+      <div class="ctrl-label-row">
+        <span>粒子尺寸 (Point Size)</span>
+        <span class="ctrl-val" id="val-size">3.0</span>
+      </div>
+      <input type="range" class="ctrl-slider" id="slider-size" min="1.0" max="8.0" step="0.2" value="3.0">
+    </div>
+
+    <!-- Film Grain Jitter -->
+    <div class="ctrl-group">
+      <div class="ctrl-label-row">
+        <span>底片銀鹽震顫 (Film Grain Jitter)</span>
+        <span class="ctrl-val" id="val-noise">0.9</span>
+      </div>
+      <input type="range" class="ctrl-slider" id="slider-noise" min="0" max="3.0" step="0.1" value="0.9">
+    </div>
+
+    <!-- Shadow Cutoff Threshold -->
+    <div class="ctrl-group">
+      <div class="ctrl-label-row">
+        <span>暗部剔除門檻 (Shadow Cutoff)</span>
+        <span class="ctrl-val" id="val-cutoff">0.07</span>
+      </div>
+      <input type="range" class="ctrl-slider" id="slider-cutoff" min="0.01" max="0.30" step="0.01" value="0.07">
+    </div>
+
+    <!-- Liquid Dissolve -->
+    <div class="ctrl-group">
+      <div class="ctrl-label-row">
+        <span>液態消融進度 (Curl Noise Dispersal)</span>
+        <span class="ctrl-val" id="val-disperse">0.00</span>
+      </div>
+      <input type="range" class="ctrl-slider" id="slider-disperse" min="0" max="1" step="0.01" value="0">
+    </div>
+
+    <!-- Dissolve Quick Action -->
+    <button class="dissolve-trigger-btn" id="btn-trigger-dissolve">
+      <span>✨ 觸發液態吹散 / 重組轉場</span>
+    </button>
+
+    <!-- Color Scheme Preset -->
+    <div class="ctrl-group" style="margin-top: 14px;">
+      <div class="ctrl-label-row">
+        <span>色調模式 (Tonal Style)</span>
+      </div>
+      <div class="btn-row">
+        <div class="preset-chip active" data-color="emerald">Byotōne 祖母綠</div>
+        <div class="preset-chip" data-color="silver">黑白銀鹽底片</div>
+        <div class="preset-chip" data-color="amber">復古琥珀暖調</div>
+        <div class="preset-chip" data-color="cyan">賽博青光疊加</div>
+      </div>
+    </div>
+
+    <!-- Grid Resolution -->
+    <div class="ctrl-group" style="margin-top: 12px;">
+      <div class="ctrl-label-row">
+        <span>網格採樣密度 (Grid Points)</span>
+      </div>
+      <div class="btn-row">
+        <div class="preset-chip" data-grid="320x180">5.7 萬 (極速)</div>
+        <div class="preset-chip active" data-grid="480x270">13 萬 (推薦)</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- PIP RGB-D Source Monitor -->
+  <div class="pip-monitor" id="pip-monitor">
+    <div class="pip-header">
+      <span>Depth-Anything RGB-D 串流</span>
+      <span style="color:var(--accent-emerald);">左色彩 ｜ 右深度</span>
+    </div>
+    <video id="pip-video-feed" src="./assets/dance-rgbd-720p.mp4" playsinline webkit-playsinline muted loop crossorigin="anonymous" class="pip-video"></video>
+  </div>
+
+  <!-- Bottom Timeline HUD -->
+  <div class="timeline-hud">
+    <button class="play-btn" id="btn-play">
+      <span id="play-icon">▶</span>
+    </button>
+
+    <div class="time-readout" id="time-readout">00:00 / 00:10</div>
+
+    <div class="scrub-track" id="scrub-track">
+      <div class="scrub-fill" id="scrub-fill"></div>
+      <div class="scrub-thumb" id="scrub-thumb"></div>
+    </div>
+
+    <button class="hud-btn" id="btn-speed" style="padding: 4px 10px; font-size: 0.72rem;">
+      <span id="speed-text">1.0x</span>
+    </button>
+  </div>
+
+  <div class="orbit-hint">
+    <span>🖱️ 滑鼠拖曳旋轉 3D 空間 ｜ 滾輪縮放視角</span>
+  </div>
+
+  <!-- Three.js & OrbitControls -->
+  <script src="./assets/three.min.js"></script>
+  <script src="./assets/OrbitControls.js"></script>
+
+  <!-- Volumetric Particle Engine Script -->
+  <script>
+    (function() {
+      // 1. Video and Canvas Setup
+      const canvas = document.getElementById('webgl-canvas');
+      const video = document.getElementById('rgbd-video');
+      const pipVideo = document.getElementById('pip-video-feed');
+
+      let renderer, scene, camera, controls;
+      let particleGeometry, particleMaterial, particleSystem;
+      let videoTexture;
+
+      let gridWidth = 480;
+      let gridHeight = 270;
+      let numParticles = gridWidth * gridHeight;
+
+      // Color Presets
+      const COLOR_PALETTES = {
+        emerald: {
+          light: new THREE.Color(0.85, 0.93, 0.88),
+          shadow: new THREE.Color(0.08, 0.18, 0.14)
+        },
+        silver: {
+          light: new THREE.Color(0.92, 0.92, 0.94),
+          shadow: new THREE.Color(0.12, 0.12, 0.14)
+        },
+        amber: {
+          light: new THREE.Color(0.96, 0.82, 0.65),
+          shadow: new THREE.Color(0.20, 0.11, 0.05)
+        },
+        cyan: {
+          light: new THREE.Color(0.55, 0.88, 0.96),
+          shadow: new THREE.Color(0.05, 0.15, 0.22)
+        }
+      };
+
+      let activePalette = COLOR_PALETTES.emerald;
+
+      // GLSL Vertex Shader: Dynamic Depth Displacement + Film Grain + Curl Noise
+      const vertexShader = `
+        precision highp float;
+
+        attribute vec4 seed; // [seedX, seedY, seedZ, seedW]
+
+        uniform sampler2D uVideo;
+        uniform float uTime;
+        uniform float uDepthScale;
+        uniform float uPointSize;
+        uniform float uNoiseStrength;
+        uniform float uDisperse;
+        uniform float uPointSpan;
+
+        varying float vBrightness;
+        varying float vDepth;
+        varying vec4 vSeed;
+
+        // Pseudo-random function for silver halide jitter
+        float random(vec2 st) {
+          return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+        }
+
+        // Simplex / Curl noise for liquid morphing dispersal
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+        float snoise(vec3 v) {
+          const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+          vec3 i = floor(v + dot(v, C.yyy));
+          vec3 x0 = v - i + dot(i, C.xxx);
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min(g.xyz, l.zxy);
+          vec3 i2 = max(g.xyz, l.zxy);
+          vec3 x1 = x0 - i1 + C.xxx;
+          vec3 x2 = x0 - i2 + C.yyy;
+          vec3 x3 = x0 - D.yyy;
+          i = mod289(i);
+          vec4 p = permute(permute(permute(
+                    i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                  + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                  + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+          float n_ = 0.142857142857;
+          vec3 ns = n_ * D.wyz - D.xzx;
+          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_);
+          vec4 x = x_ * ns.x + ns.yyyy;
+          vec4 y = y_ * ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+          vec4 b0 = vec4(x.xy, y.xy);
+          vec4 b1 = vec4(x.zw, y.zw);
+          vec4 s0 = floor(b0) * 2.0 + 1.0;
+          vec4 s1 = floor(b1) * 2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+          vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+          vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+          vec3 p0 = vec3(a0.xy, h.x);
+          vec3 p1 = vec3(a0.zw, h.y);
+          vec3 p2 = vec3(a1.xy, h.z);
+          vec3 p3 = vec3(a1.zw, h.w);
+          vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+          p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+          vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot(m * m, vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+        }
+
+        vec3 curlNoise(vec3 p) {
+          const float e = 0.05;
+          float n1 = snoise(vec3(p.x, p.y + e, p.z));
+          float n2 = snoise(vec3(p.x, p.y - e, p.z));
+          float n3 = snoise(vec3(p.x, p.y, p.z + e));
+          float n4 = snoise(vec3(p.x, p.y, p.z - e));
+          float n5 = snoise(vec3(p.x + e, p.y, p.z));
+          float n6 = snoise(vec3(p.x - e, p.y, p.z));
+          float x = (n1 - n2) - (n3 - n4);
+          float y = (n3 - n4) - (n5 - n6);
+          float z = (n5 - n6) - (n1 - n2);
+          return normalize(vec3(x, y, z));
+        }
+
+        void main() {
+          vSeed = seed;
+
+          // Side-by-Side Video UV Sampling:
+          // Left half [0.0, 0.5] = Color Video
+          // Right half [0.5, 1.0] = Depth-Anything Depth Map
+          vec2 uvColor = vec2(uv.x * 0.5, uv.y);
+          vec2 uvDepth = vec2(uv.x * 0.5 + 0.5, uv.y);
+
+          vec4 colorSample = texture2D(uVideo, uvColor);
+          vec4 depthSample = texture2D(uVideo, uvDepth);
+
+          // Luminance Calculation
+          float brightness = dot(colorSample.rgb, vec3(0.299, 0.587, 0.114));
+          vBrightness = brightness;
+
+          // Depth-Anything 0..1 geometric depth
+          float depth = depthSample.r;
+          vDepth = depth;
+
+          vec3 newPos = position;
+
+          // 1. Z-Depth Volumetric Displacement
+          newPos.z += depth * uDepthScale;
+
+          // 2. High-ISO Analog Film Grain Jitter
+          float jitterZ = (random(uv + sin(uTime * 14.0 + seed.x * 6.28)) - 0.5) * uNoiseStrength;
+          float jitterXY = (random(uv.yx + cos(uTime * 11.0 + seed.y * 6.28)) - 0.5) * uNoiseStrength * 0.35;
+          newPos.z += jitterZ * depth;
+          newPos.xy += jitterXY * depth;
+
+          // 3. Liquid Curl Noise Dispersal
+          if (uDisperse > 0.001) {
+            vec3 curl = curlNoise(position * 0.04 + vec3(0.0, 0.0, uTime * 0.2));
+            newPos += curl * (uDisperse * 120.0);
+          }
+
+          vec4 mvPosition = modelViewMatrix * vec4(newPos, 1.0);
+          gl_Position = projectionMatrix * mvPosition;
+
+          // 4. Pointillism Halftone Size Modulation
+          // Highlights produce denser, larger overlapping spots; shadows shrink or vanish
+          float sizeFactor = mix(0.35, 2.4, pow(brightness, 0.95)) * mix(0.75, 1.25, seed.w);
+          gl_PointSize = uPointSpan * uPointSize * sizeFactor * (180.0 / -mvPosition.z);
+        }
+      `;
+
+      // GLSL Fragment Shader: Soft Point Halo, Chiaroscuro Cutoff & Color Grading
+      const fragmentShader = `
+        precision highp float;
+
+        uniform vec3 uColorLight;
+        uniform vec3 uColorShadow;
+        uniform float uThreshold;
+        uniform float uDisperse;
+
+        varying float vBrightness;
+        varying float vDepth;
+        varying vec4 vSeed;
+
+        void main() {
+          // Discard dark background (pure black backdrop)
+          if (vBrightness < uThreshold && uDisperse < 0.05) discard;
+
+          // Cut into circular point sprite
+          vec2 coord = gl_PointCoord - vec2(0.5);
+          float radiusSq = dot(coord, coord) * 4.0;
+          if (radiusSq > 1.0) discard;
+
+          // Soft Gaussian halo + intense bright core (Byotōne authentic point language)
+          float halo = exp(-radiusSq * 3.4) * 0.55 + (1.0 - smoothstep(0.18, 0.65, sqrt(radiusSq))) * 0.45;
+
+          // Chiaroscuro tonal mapping: ink shadow to radiant highlight
+          vec3 color = mix(uColorShadow, uColorLight, pow(vBrightness, 1.15));
+
+          // Disperse alpha fade
+          float alpha = halo * clamp(vBrightness * 1.5, 0.15, 1.0) * (1.0 - uDisperse * 0.65);
+
+          gl_FragColor = vec4(color, alpha);
+        }
+      `;
+
+      function init() {
+        // Renderer
+        renderer = new THREE.WebGLRenderer({
+          canvas: canvas,
+          antialias: true,
+          alpha: true,
+          powerPreference: 'high-performance'
+        });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Scene & Camera
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(54, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 160);
+
+        // OrbitControls
+        controls = new THREE.OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 350;
+        controls.minDistance = 40;
+        controls.target.set(0, 0, 15);
+
+        // Video Texture
+        videoTexture = new THREE.VideoTexture(video);
+        videoTexture.minFilter = THREE.LinearFilter;
+        videoTexture.magFilter = THREE.LinearFilter;
+        videoTexture.format = THREE.RGBAFormat;
+
+        buildParticleMesh(gridWidth, gridHeight);
+
+        // Event Listeners
+        window.addEventListener('resize', onResize);
+        setupUI();
+
+        // Start playback
+        video.play().catch(() => {
+          console.log('Autoplay muted waiting for click');
+        });
+        pipVideo.play().catch(() => {});
+
+        animate();
+      }
+
+      function buildParticleMesh(width, height) {
+        if (particleSystem) {
+          scene.remove(particleSystem);
+          particleGeometry.dispose();
+          particleMaterial.dispose();
+        }
+
+        gridWidth = width;
+        gridHeight = height;
+        numParticles = width * height;
+
+        particleGeometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(numParticles * 3);
+        const uvs = new Float32Array(numParticles * 2);
+        const seeds = new Float32Array(numParticles * 4);
+
+        // World plane dimensions matching 16:9 aspect
+        const planeW = 160;
+        const planeH = 90;
+
+        let idx = 0;
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const u = x / (width - 1);
+            const v = 1.0 - (y / (height - 1));
+
+            // Position centered at (0,0,0)
+            positions[idx * 3 + 0] = (u - 0.5) * planeW;
+            positions[idx * 3 + 1] = (v - 0.5) * planeH;
+            positions[idx * 3 + 2] = 0.0;
+
+            uvs[idx * 2 + 0] = u;
+            uvs[idx * 2 + 1] = v;
+
+            seeds[idx * 4 + 0] = Math.random();
+            seeds[idx * 4 + 1] = Math.random();
+            seeds[idx * 4 + 2] = Math.random();
+            seeds[idx * 4 + 3] = Math.random();
+
+            idx++;
+          }
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        particleGeometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        particleGeometry.setAttribute('seed', new THREE.BufferAttribute(seeds, 4));
+
+        particleMaterial = new THREE.ShaderMaterial({
+          vertexShader: vertexShader,
+          fragmentShader: fragmentShader,
+          uniforms: {
+            uVideo: { value: videoTexture },
+            uTime: { value: 0.0 },
+            uDepthScale: { value: parseFloat(document.getElementById('slider-depth').value) },
+            uPointSize: { value: parseFloat(document.getElementById('slider-size').value) },
+            uNoiseStrength: { value: parseFloat(document.getElementById('slider-noise').value) },
+            uThreshold: { value: parseFloat(document.getElementById('slider-cutoff').value) },
+            uDisperse: { value: parseFloat(document.getElementById('slider-disperse').value) },
+            uPointSpan: { value: 1.0 },
+            uColorLight: { value: activePalette.light },
+            uColorShadow: { value: activePalette.shadow }
+          },
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
+
+        particleSystem = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(particleSystem);
+      }
+
+      function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      let autoOrbit = true;
+      let clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const elapsedTime = clock.getElapsedTime();
+
+        if (particleMaterial) {
+          particleMaterial.uniforms.uTime.value = elapsedTime;
+        }
+
+        // Cinematic Parallax Breathing
+        if (autoOrbit && controls) {
+          const swayX = Math.sin(elapsedTime * 0.4) * 12.0;
+          const swayY = Math.cos(elapsedTime * 0.3) * 6.0;
+          camera.position.x = swayX;
+          camera.position.y = swayY;
+          controls.update();
+        } else if (controls) {
+          controls.update();
+        }
+
+        renderer.render(scene, camera);
+        updateTimeline();
+      }
+
+      // UI Bindings
+      function setupUI() {
+        const sliderDepth = document.getElementById('slider-depth');
+        const valDepth = document.getElementById('val-depth');
+        sliderDepth.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          valDepth.textContent = val.toFixed(1);
+          if (particleMaterial) particleMaterial.uniforms.uDepthScale.value = val;
+        });
+
+        const sliderSize = document.getElementById('slider-size');
+        const valSize = document.getElementById('val-size');
+        sliderSize.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          valSize.textContent = val.toFixed(1);
+          if (particleMaterial) particleMaterial.uniforms.uPointSize.value = val;
+        });
+
+        const sliderNoise = document.getElementById('slider-noise');
+        const valNoise = document.getElementById('val-noise');
+        sliderNoise.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          valNoise.textContent = val.toFixed(1);
+          if (particleMaterial) particleMaterial.uniforms.uNoiseStrength.value = val;
+        });
+
+        const sliderCutoff = document.getElementById('slider-cutoff');
+        const valCutoff = document.getElementById('val-cutoff');
+        sliderCutoff.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          valCutoff.textContent = val.toFixed(2);
+          if (particleMaterial) particleMaterial.uniforms.uThreshold.value = val;
+        });
+
+        const sliderDisperse = document.getElementById('slider-disperse');
+        const valDisperse = document.getElementById('val-disperse');
+        sliderDisperse.addEventListener('input', (e) => {
+          const val = parseFloat(e.target.value);
+          valDisperse.textContent = val.toFixed(2);
+          if (particleMaterial) particleMaterial.uniforms.uDisperse.value = val;
+        });
+
+        // Trigger liquid dissolve / reform animation
+        const btnDissolve = document.getElementById('btn-trigger-dissolve');
+        let isDispersed = false;
+        let dissolveAnim = null;
+        btnDissolve.addEventListener('click', () => {
+          if (dissolveAnim) clearInterval(dissolveAnim);
+          const target = isDispersed ? 0.0 : 1.0;
+          isDispersed = !isDispersed;
+          btnDissolve.innerHTML = isDispersed ? '💧 聚合重組人體粒子' : '✨ 觸發液態吹散 / 重組轉場';
+
+          const start = particleMaterial.uniforms.uDisperse.value;
+          const startTime = performance.now();
+          const duration = 1400; // 1.4s
+
+          function step(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(1.0, elapsed / duration);
+            // Ease in out cubic
+            const ease = progress < 0.5
+              ? 4 * progress * progress * progress
+              : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+            const current = start + (target - start) * ease;
+            particleMaterial.uniforms.uDisperse.value = current;
+            sliderDisperse.value = current;
+            valDisperse.textContent = current.toFixed(2);
+
+            if (progress < 1.0) {
+              requestAnimationFrame(step);
+            }
+          }
+          requestAnimationFrame(step);
+        });
+
+        // Color Palettes
+        document.querySelectorAll('[data-color]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-color]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const key = btn.dataset.color;
+            activePalette = COLOR_PALETTES[key] || COLOR_PALETTES.emerald;
+            if (particleMaterial) {
+              particleMaterial.uniforms.uColorLight.value = activePalette.light;
+              particleMaterial.uniforms.uColorShadow.value = activePalette.shadow;
+            }
+          });
+        });
+
+        // Grid Resolution
+        document.querySelectorAll('[data-grid]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-grid]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const [w, h] = btn.dataset.grid.split('x').map(Number);
+            buildParticleMesh(w, h);
+          });
+        });
+
+        // Collapse Panel
+        const panel = document.getElementById('control-panel');
+        const btnCollapse = document.getElementById('btn-collapse');
+        btnCollapse.addEventListener('click', () => {
+          panel.classList.toggle('is-collapsed');
+          btnCollapse.textContent = panel.classList.contains('is-collapsed') ? '+' : '−';
+        });
+
+        // Auto Orbit Toggle
+        const btnOrbit = document.getElementById('btn-toggle-orbit');
+        btnOrbit.addEventListener('click', () => {
+          autoOrbit = !autoOrbit;
+          btnOrbit.classList.toggle('active', autoOrbit);
+        });
+
+        // PIP Toggle
+        const pip = document.getElementById('pip-monitor');
+        const btnPip = document.getElementById('btn-toggle-pip');
+        btnPip.addEventListener('click', () => {
+          pip.classList.toggle('is-hidden');
+          btnPip.classList.toggle('active', !pip.classList.contains('is-hidden'));
+        });
+
+        // Video Timeline
+        const btnPlay = document.getElementById('btn-play');
+        const playIcon = document.getElementById('play-icon');
+        btnPlay.addEventListener('click', () => {
+          if (video.paused) {
+            video.play();
+            pipVideo.play();
+            playIcon.textContent = '❚❚';
+          } else {
+            video.pause();
+            pipVideo.pause();
+            playIcon.textContent = '▶';
+          }
+        });
+
+        video.addEventListener('play', () => { playIcon.textContent = '❚❚'; });
+        video.addEventListener('pause', () => { playIcon.textContent = '▶'; });
+
+        // Speed Toggle
+        const btnSpeed = document.getElementById('btn-speed');
+        const speedText = document.getElementById('speed-text');
+        const speeds = [1.0, 0.5, 0.25, 1.5];
+        let speedIdx = 0;
+        btnSpeed.addEventListener('click', () => {
+          speedIdx = (speedIdx + 1) % speeds.length;
+          const spd = speeds[speedIdx];
+          video.playbackRate = spd;
+          pipVideo.playbackRate = spd;
+          speedText.textContent = spd + 'x';
+        });
+
+        // Timeline Scrubber
+        const scrubTrack = document.getElementById('scrub-track');
+        let isScrubbing = false;
+
+        function seekTo(e) {
+          const rect = scrubTrack.getBoundingClientRect();
+          const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          if (video.duration) {
+            video.currentTime = pos * video.duration;
+            pipVideo.currentTime = video.currentTime;
+          }
+        }
+
+        scrubTrack.addEventListener('mousedown', (e) => {
+          isScrubbing = true;
+          seekTo(e);
+        });
+        window.addEventListener('mousemove', (e) => {
+          if (isScrubbing) seekTo(e);
+        });
+        window.addEventListener('mouseup', () => {
+          isScrubbing = false;
+        });
+
+        // Synchronize PIP video
+        video.addEventListener('seeked', () => {
+          pipVideo.currentTime = video.currentTime;
+        });
+      }
+
+      function updateTimeline() {
+        if (!video.duration) return;
+        const current = video.currentTime;
+        const total = video.duration;
+        const ratio = (current / total) * 100;
+
+        document.getElementById('scrub-fill').style.width = ratio + '%';
+        document.getElementById('scrub-thumb').style.left = ratio + '%';
+
+        const fmt = (s) => {
+          const m = Math.floor(s / 60).toString().padStart(2, '0');
+          const sec = Math.floor(s % 60).toString().padStart(2, '0');
+          return `${m}:${sec}`;
+        };
+        document.getElementById('time-readout').textContent = `${fmt(current)} / ${fmt(total)}`;
+      }
+
+      window.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>

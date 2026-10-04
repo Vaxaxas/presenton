@@ -38,7 +38,11 @@ const server = http.createServer((req, res) => {
 
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=UTF-8' });
+      res.writeHead(404, {
+        'Content-Type': 'text/plain; charset=UTF-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Access-Control-Allow-Origin': '*'
+      });
       res.end('404 Not Found');
       return;
     }
@@ -46,12 +50,54 @@ const server = http.createServer((req, res) => {
     const ext = path.extname(filePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
+    // Support HTTP Range requests for smooth video playback and seeking
+    const range = req.headers.range;
+    if (range && ext === '.mp4') {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+
+      if (start >= stats.size || end >= stats.size) {
+        res.writeHead(416, {
+          'Content-Range': `bytes */${stats.size}`,
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end();
+        return;
+      }
+
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(filePath, { start, end });
+      req.on('close', () => file.destroy());
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${stats.size}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Access-Control-Allow-Origin': '*'
+      });
+      file.pipe(res);
+      return;
+    }
+
+    const file = fs.createReadStream(filePath);
+    req.on('close', () => file.destroy());
+
     res.writeHead(200, {
       'Content-Type': contentType,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': stats.size,
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+      'Pragma': 'no-cache',
+      'Expires': '0',
       'Access-Control-Allow-Origin': '*'
     });
 
-    fs.createReadStream(filePath).pipe(res);
+    file.pipe(res);
   });
 });
 

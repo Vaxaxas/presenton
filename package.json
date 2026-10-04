@@ -8,13 +8,17 @@
     "test": "npm run test:template-converter && node --test scripts/package-metadata.test.mjs scripts/sync-presentation-export.test.mjs",
     "convert:template": "node scripts/convert-template.mjs",
     "convert:presentation-template": "node scripts/convert-presentation-template.mjs",
-    "test:template-converter": "node --test scripts/convert-template.test.mjs scripts/convert-presentation-template.test.mjs",
+    "dev": "npm run dev --prefix 3d-presentation",
+    "dev:3d": "npm run dev --prefix 3d-presentation",
+    "build:3d": "npm run build --prefix 3d-presentation",
     "dev:next": "npm run dev --prefix servers/nextjs",
     "dev:fastapi": "uv run --directory servers/fastapi python server.py --port 5001 --reload true",
     "build:next": "npm run build --prefix servers/nextjs",
     "sync:presentation-export": "node scripts/sync-presentation-export.cjs",
     "sync:presentation-export:force": "node scripts/sync-presentation-export.cjs --force",
-    "check:presentation-export": "node scripts/sync-presentation-export.cjs --check-only"
+    "check:presentation-export": "node scripts/sync-presentation-export.cjs --check-only",
+    "serve:presentation": "node byotone-clone/serve.cjs",
+    "build:presentation": "node byotone-clone/build_presentation.cjs"
   },
   "dependencies": {
     "@llamaindex/liteparse": "^1.5.2",

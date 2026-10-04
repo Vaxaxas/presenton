@@ -39,27 +39,75 @@ import{a as e,i as t,o as n}from"./Mesh.hM-DVdua.js";var r=new n,i=1,a=class{con
 	varying float vAlpha;
 
 	float lumaAt(vec2 cell) {
-		return dot(texture2D(uMap, (cell - 0.5) * uCover + 0.5 + uOffset).rgb, vec3(0.299, 0.587, 0.114));
+		vec2 baseUv = (cell - 0.5) * uCover + 0.5 + uOffset;
+		vec2 uvColor = vec2(baseUv.x * 0.5, baseUv.y);
+		return dot(texture2D(uMap, uvColor).rgb, vec3(0.299, 0.587, 0.114));
+	}
+
+	float depthAt(vec2 cell) {
+		vec2 baseUv = (cell - 0.5) * uCover + 0.5 + uOffset;
+		vec2 uvDepth = vec2(baseUv.x * 0.5 + 0.5, baseUv.y);
+		return texture2D(uMap, uvDepth).r;
 	}
 
 	void main() {
-		// Scattered off-grid, drifting slowly
+		// Scattered off-grid, drifting slowly with film grain noise
 		vec2 drift = vec2(sin(uTime * 0.35 + seed.x * 6.2831), cos(uTime * 0.3 + seed.y * 6.2831));
 		vec2 cell = position + (seed.xy - 0.5) * uCell * 1.3 + drift * uCell * 0.08 * uMotion;
 
-		// Midtones lifted hard: the footage is dark
-		float level = pow(smoothstep(0.03, 0.6, lumaAt(cell)), 0.85);
+		// Extract luminance and Depth-Anything 3D form
+		float luma = lumaAt(cell);
+		float rawDepth = depthAt(cell);
 
-		// Brightness is depth, parallaxed around the mid
-		float depth = level * 0.4 - 0.2;
-		float push = 1.0 - depth * 0.3;
-		vec2 eye = vec2(sin(uTime * 0.13), cos(uTime * 0.11)) * 0.02 * uMotion + uPointer * 0.035;
+		// Depth-assisted body form recovery: for human figures in dark clothing (dancers),
+		// depth reveals the complete anatomical silhouette when uDensity is lifted
+		float bodyForm = smoothstep(0.08, 0.32, rawDepth) * 0.28;
+		float signal = max(luma, bodyForm * smoothstep(0.14, 0.35, uDensity));
+		float level = pow(smoothstep(0.015, 0.54, signal), 0.76);
+
+		// True Depth-Anything geometric depth displacement
+		float depth = (rawDepth * 0.95 - 0.25) * (0.25 + 0.75 * level);
+		float push = 1.0 - depth * 0.45;
+
+		// Subtle cinematic breathing eye motion (無鼠標排斥凸面鏡形變)
+		vec2 eye = vec2(sin(uTime * 0.13), cos(uTime * 0.11)) * 0.022 * uMotion;
 		vec2 point = (cell * 2.0 - 1.0 - eye * depth) / push;
 
-		// Grains settle in on their own beat, along the scroll's direction
-		float gather = smoothstep(0.0, 1.0, uGather * 1.7 - seed.z * 0.7);
-		point.y += uSide * (1.0 - gather) * (0.1 + seed.z * 0.14);
-		point.x += sin(seed.w * 6.2831 + uTime * 0.3) * (1.0 - gather) * 0.04;
+		// Temporal film grain jitter (銀鹽顆粒高頻動態顫動)
+		vec2 grainJitter = vec2(
+			sin(uTime * 22.0 + seed.x * 29.3 + seed.z * 13.7),
+			cos(uTime * 19.0 + seed.y * 31.1 + seed.w * 17.9)
+		) * (0.0032 * uMotion * depth + 0.0018 * uMotion);
+		point += grainJitter;
+
+		// Grains settle in on their own beat, along the scroll's direction with special staggered 3D volumetric transition
+		float grainDelay = fract(seed.z * 1.83 + seed.w * 0.97 + rawDepth * 0.31);
+		float stagger = 0.42;
+		float pProg = clamp(uReveal * (1.0 + stagger) - grainDelay * stagger, 0.0, 1.0);
+		float grainBlend = pProg * pProg * (3.0 - 2.0 * pProg);
+
+		// Mid-transition organic turbulence surge (在轉場中段達到浪湧峰值，完全就位或離開時為 0)
+		float release = grainBlend * (1.0 - grainBlend) * 4.0;
+		float departProgress = 1.0 - grainBlend;
+
+		// 深度 3D 空間立體膨脹與解離 (Volumetric Depth Dispersion)
+		float depthDisperse = (rawDepth * 1.6 - 0.4) * release * 0.55 * (0.6 + 0.8 * seed.w);
+		depth += depthDisperse;
+		push = 1.0 - depth * 0.45;
+
+		// 多重諧波水墨微粒渦流 (Harmonic Swirl & Vortex)
+		vec2 vortex = vec2(
+			sin(uTime * 1.7 + seed.x * 12.56 + cell.y * 7.85) * 0.65 + cos(uTime * 0.85 + seed.z * 9.42) * 0.35,
+			cos(uTime * 1.5 + seed.y * 12.56 + cell.x * 7.85) * 0.65 + sin(uTime * 0.95 + seed.w * 9.42) * 0.35
+		) * (0.24 * release * (0.5 + 0.5 * seed.z) * uMotion);
+		point += vortex;
+
+		// 翻頁向量定向揚起與擴散動能 (Directional departure with lift along uSide)
+		vec2 departure = vec2(
+			(seed.x - 0.5) * departProgress * 0.35 + sin(seed.y * 6.2831 + uTime * 0.8) * departProgress * 0.14,
+			uSide * departProgress * (0.26 + 0.22 * seed.z)
+		);
+		point += departure;
 
 		// The base dissolves into the ground so the copy reads
 		float ground = (1.0 - smoothstep(-0.9, 0.05, point.y + seed.z * 0.2)) * uGround;
@@ -68,23 +116,36 @@ import{a as e,i as t,o as n}from"./Mesh.hM-DVdua.js";var r=new n,i=1,a=class{con
 		// Density and size follow a knee'd level: highlights sit closer to the mids
 		float lit = level - max(level - 0.55, 0.0) * uHighlights;
 
-		// Per-grain threshold: shadow stays sparse dust
-		float grain = smoothstep(seed.y - 0.08, seed.y + 0.08, lit * 0.9 + uDensity - ground * 0.4);
+		// Authentic subtle film grain noise in surrounding space (更清爽空靈的環境微粒)
+		float hash = fract(sin(dot(seed.xy * 17.13 + vec2(sin(uTime * 5.0), cos(uTime * 4.3)), vec2(12.9898, 78.233))) * 43758.5453);
+		float dustThreshold = 0.994;
+		float ambientDust = step(dustThreshold, hash) * (0.10 + 0.18 * seed.w);
+
+		// Per-grain threshold: 更疏朗通透的顆粒密度，保留呼吸感
+		float grain = smoothstep(seed.y - 0.02, seed.y + 0.12, lit * 0.82 + uDensity - ground * 0.35);
 
 		// Scatter can push a grain off the picture, where the texture smears its edge pixel
 		vec2 inside = smoothstep(0.0, 0.03, cell) * smoothstep(0.0, 0.03, 1.0 - cell);
 
 		gl_Position = vec4(point * uFrame + vec2(0.0, uShift), 0.0, 1.0);
-		gl_PointSize = uPointSpan * uScale
-			* mix(0.6, 1.75, lit) * mix(0.6, 1.3, seed.w)
-			* (0.5 + 0.5 * gather) * mix(1.0, 0.7, ground) / push;
 
-		// Same ink ramp as the morphing field
-		vColor = mix(uShadow, uLight, pow(level, 1.1) * settle) * uBrightness;
-		float shimmer = 1.0 - 0.06 * uMotion * (0.5 + 0.5 * sin(uTime * 1.2 + seed.z * 6.2831));
-		vAlpha = uReveal * (0.16 + level) * shimmer * mix(0.35, 1.0, gather) * grain * settle
+		// 轉場中微粒自然軟化膨脹（Bokeh Bloom），散逸時如水墨煙霧光斑
+		float bloom = 1.0 + release * 1.5 * (0.4 + 0.6 * seed.w);
+		gl_PointSize = uPointSpan * uScale
+			* mix(0.7, 2.0, lit) * mix(0.7, 1.3, seed.w)
+			* bloom
+			* (0.35 + 0.65 * grainBlend) * mix(1.0, 0.7, ground) / push;
+
+		// Soft warm graphite charcoal ink ramp (溫潤石墨炭黑與淡墨灰階，色彩不再過深)
+		vColor = mix(uShadow, uLight, pow(level, 1.05) * settle) * uBrightness;
+		float shimmer = 1.0 - 0.04 * uMotion * (0.5 + 0.5 * sin(uTime * 1.2 + seed.z * 6.2831));
+
+		// 平滑錯位階梯式透明度衰減 (Cascading Staggered Alpha Dissolve)，通透透光
+		float transAlpha = smoothstep(0.0, 0.88, grainBlend);
+		vAlpha = transAlpha * clamp(level * 1.5, 0.0, 0.78) * shimmer * max(grain, ambientDust) * settle
 			* inside.x * inside.y;
 	}
+
 `,d=`
 	precision highp float;
 
@@ -92,6 +153,8 @@ import{a as e,i as t,o as n}from"./Mesh.hM-DVdua.js";var r=new n,i=1,a=class{con
 	varying float vAlpha;
 
 	void main() {
+		if (vAlpha < 0.015) discard;
+
 		vec2 centered = gl_PointCoord - 0.5;
 		float radiusSquared = dot(centered, centered) * 4.0;
 		if (radiusSquared > 1.0) discard;
@@ -101,4 +164,4 @@ import{a as e,i as t,o as n}from"./Mesh.hM-DVdua.js";var r=new n,i=1,a=class{con
 			+ (1.0 - smoothstep(0.18, 0.62, sqrt(radiusSquared))) * 0.5;
 		gl_FragColor = vec4(vColor, coverage * vAlpha);
 	}
-`,f={brightness:.75,highlights:.6,density:.12,scale:1,motion:1},p=[.86,.85,.83];function m(t,n,r){let i=n*r,a=new Float32Array(i*2),o=new Float32Array(i*4);for(let e=0;e<i;e++)a[e*2]=(e%n+.5)/n,a[e*2+1]=(Math.floor(e/n)+.5)/r;for(let e=0;e<o.length;e++)o[e]=Math.random();return new e(t,{position:{size:2,data:a},seed:{size:4,data:o}})}function h(e){let n=new l(e,{generateMipmaps:!1,minFilter:e.LINEAR,magFilter:e.LINEAR});return{texture:n,program:new t(e,{vertex:u,fragment:d,transparent:!0,depthTest:!1,depthWrite:!1,cullFace:null,uniforms:{uMap:{value:n},uCover:{value:new Float32Array([1,1])},uOffset:{value:new Float32Array([0,0])},uFrame:{value:new Float32Array([1,1])},uCell:{value:new Float32Array([0,0])},uPointer:{value:new Float32Array([0,0])},uShadow:{value:new Float32Array(3)},uLight:{value:new Float32Array(p)},uReveal:{value:1},uGather:{value:1},uSide:{value:1},uShift:{value:0},uGround:{value:0},uTime:{value:0},uBrightness:{value:f.brightness},uHighlights:{value:f.highlights},uDensity:{value:f.density},uScale:{value:f.scale},uMotion:{value:f.motion},uPointSpan:{value:6}}})}}function g(e,t){e.uniforms.uBrightness.value=t.brightness,e.uniforms.uHighlights.value=t.highlights,e.uniforms.uDensity.value=t.density,e.uniforms.uScale.value=t.scale,e.uniforms.uMotion.value=t.motion}export{l as a,m as i,g as n,a as o,h as r,f as t};
+`,f={brightness:1,highlights:.55,density:.02,scale:1.05,motion:1},p=[28/255,25/255,23/255];function m(t,n,r){let i=n*r,a=new Float32Array(i*2),o=new Float32Array(i*4);for(let e=0;e<i;e++)a[e*2]=(e%n+.5)/n,a[e*2+1]=(Math.floor(e/n)+.5)/r;for(let e=0;e<o.length;e++)o[e]=Math.random();return new e(t,{position:{size:2,data:a},seed:{size:4,data:o}})}function h(e){let n=new l(e,{generateMipmaps:!1,minFilter:e.LINEAR,magFilter:e.LINEAR});return{texture:n,program:new t(e,{vertex:u,fragment:d,transparent:!0,depthTest:!1,depthWrite:!1,cullFace:null,uniforms:{uMap:{value:n},uCover:{value:new Float32Array([1,1])},uOffset:{value:new Float32Array([0,0])},uFrame:{value:new Float32Array([1,1])},uCell:{value:new Float32Array([0,0])},uPointer:{value:new Float32Array([0,0])},uShadow:{value:new Float32Array([68/255,62/255,58/255])},uLight:{value:new Float32Array([142/255,134/255,126/255])},uReveal:{value:1},uGather:{value:1},uSide:{value:1},uShift:{value:0},uGround:{value:0},uTime:{value:0},uBrightness:{value:f.brightness},uHighlights:{value:f.highlights},uDensity:{value:f.density},uScale:{value:f.scale},uMotion:{value:f.motion},uPointSpan:{value:6}}})}}function g(e,t){e.uniforms.uBrightness.value=t.brightness,e.uniforms.uHighlights.value=t.highlights,e.uniforms.uDensity.value=t.density,e.uniforms.uScale.value=t.scale,e.uniforms.uMotion.value=t.motion}export{l as a,m as i,g as n,a as o,h as r,f as t};

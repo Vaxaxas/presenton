@@ -4,22 +4,21 @@ const path = require('path');
 const indexPath = path.join(__dirname, 'index.html');
 let html = fs.readFileSync(indexPath, 'utf8');
 
-// 1. Prepare Presentation Custom Styles: Editorial Minimalist Architecture
+// 1. Prepare Presentation Custom Styles: Editorial Minimalist with True Progressive Blur (漸層微霧化，零界線)
 const presentationStyles = `
 <style id="presentation-editorial-styles">
   :root {
     --color-paper: #FBF8F6;
-    --color-ink: #1C1917;
-    --color-ink-muted: rgba(28, 25, 23, 0.68);
-    --color-ink-light: rgba(28, 25, 23, 0.42);
-    --color-ink-faint: rgba(28, 25, 23, 0.08);
-    --color-hairline: rgba(28, 25, 23, 0.12);
-    --color-hairline-strong: rgba(28, 25, 23, 0.28);
-    --color-surface-faint: rgba(28, 25, 23, 0.025);
+    --color-ink: #141211;
+    --color-ink-muted: rgba(20, 18, 17, 0.78);
+    --color-ink-light: rgba(20, 18, 17, 0.52);
+    --color-ink-faint: rgba(20, 18, 17, 0.05);
+    --color-hairline: rgba(20, 18, 17, 0.12);
+    --color-hairline-strong: rgba(20, 18, 17, 0.28);
     --color-accent-terracotta: #9A3412;
     --color-accent-forest: #2A5F45;
     --color-accent-slate: #1E3A8A;
-    --font-heading: "Songti TC", "Noto Serif TC", "Source Han Serif TC", "STSong", serif, system-ui;
+    --font-heading: "Songti TC", "Noto Serif TC", "Source Han Serif TC", "STSong", Georgia, serif, system-ui;
     --font-ui: "General Sans", -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
     --font-mono: "Space Mono", "Montiac Mono", monospace;
   }
@@ -33,14 +32,19 @@ const presentationStyles = `
     scroll-snap-type: y mandatory !important;
     scroll-behavior: smooth !important;
     overflow-y: auto !important;
+    overscroll-behavior-y: none !important;
+    -webkit-overflow-scrolling: touch !important;
   }
 
-  /* 3D WebGL Canvas Fixed Background */
+  /* 3D WebGL Canvas Fixed in Fullscreen Background (GPU hardware promoted) */
   .webgl-scene, canvas {
     position: fixed !important;
     inset: 0 !important;
     z-index: 0 !important;
     pointer-events: auto !important;
+    transform: translateZ(0) !important;
+    -webkit-transform: translateZ(0) !important;
+    will-change: transform !important;
   }
 
   body.is-preloading :is(.header, main, .footer, .bottom-bar),
@@ -62,8 +66,58 @@ const presentationStyles = `
     align-items: center !important;
     justify-content: center !important;
     scroll-snap-align: start !important;
+    scroll-snap-stop: always !important;
+    overflow: hidden !important;
     opacity: 1 !important;
     visibility: visible !important;
+  }
+
+  /* ========================================================
+     核心：全螢幕漸層微霧化層 (Progressive Blur Layer)
+     絕無死板方框、無突兀硬界線，由中央向四周平滑羽化過渡，
+     中心文字清晰通透，邊緣 100% 融入 3D 動態粒子背景
+     ======================================================== */
+  .slide-atmosphere-gradient {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    /* 極輕微霧化，保證絲滑 60/120fps，並啟用行動端 GPU 合成層 */
+    backdrop-filter: blur(3.5px);
+    -webkit-backdrop-filter: blur(3.5px);
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* 雙向羽化遮罩：中心 100% 遮罩平滑衰減至四周 0%，無邊界切角 */
+    mask-image: radial-gradient(
+      ellipse 82% 76% at 50% 50%,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.9) 25%,
+      rgba(0, 0, 0, 0.48) 55%,
+      rgba(0, 0, 0, 0.1) 78%,
+      transparent 95%
+    );
+    -webkit-mask-image: radial-gradient(
+      ellipse 82% 76% at 50% 50%,
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0.9) 25%,
+      rgba(0, 0, 0, 0.48) 55%,
+      rgba(0, 0, 0, 0.1) 78%,
+      transparent 95%
+    );
+    /* 柔和溫潤的微透底色，同樣平滑羽化至 transparent */
+    background: radial-gradient(
+      ellipse 82% 76% at 50% 50%,
+      rgba(251, 248, 246, 0.84) 0%,
+      rgba(251, 248, 246, 0.68) 25%,
+      rgba(251, 248, 246, 0.32) 55%,
+      rgba(251, 248, 246, 0.06) 78%,
+      transparent 95%
+    );
   }
 
   .presentation-slide > .container,
@@ -83,73 +137,87 @@ const presentationStyles = `
     width: 100vw !important;
     height: 100% !important;
     max-width: 100vw !important;
-    padding: clamp(60px, 8vh, 100px) clamp(28px, 5vw, 80px) clamp(50px, 7vh, 80px) !important;
+    padding: clamp(52px, 7vh, 88px) clamp(24px, 4vw, 64px) clamp(40px, 5.5vh, 68px) !important;
     box-sizing: border-box !important;
     z-index: 10 !important;
   }
 
+  /* 排版容器：徹底解構死框，無任何邊框、無死板方塊背景 */
   .slide-stage-wrapper {
-    max-width: 1420px;
+    max-width: 1360px;
     width: 100%;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    position: relative;
+    z-index: 10;
+    padding: clamp(14px, 2.2vh, 28px) clamp(20px, 3vw, 42px);
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
-  .slide-eyebrow {
-    display: flex;
+  /* Editorial Kicker (告別 AI 味十足的灰色 SLIDE 01/12 方塊徽章) */
+  .editorial-kicker {
+    display: inline-flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     margin-bottom: 12px;
   }
 
-  .badge-index {
+  .kicker-num {
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: 0.86rem;
     font-weight: 700;
-    letter-spacing: 0.1em;
-    padding: 3px 10px;
-    border-radius: 4px;
-    background: var(--color-ink-faint);
-    color: var(--color-ink);
-    border: 1px solid var(--color-hairline);
+    color: var(--color-accent-terracotta);
+    letter-spacing: 0.08em;
   }
 
-  .badge-topic {
+  .kicker-slash {
+    color: var(--color-hairline-strong);
     font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--color-accent-terracotta);
+    font-weight: 300;
+  }
+
+  .kicker-label {
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--color-ink-muted);
     letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
 
   .slide-title {
-    font-size: clamp(2rem, 3.4vw, 3.1rem);
+    font-family: var(--font-heading);
+    font-size: clamp(2.1rem, 3.4vw, 3.15rem);
     font-weight: 800;
-    line-height: 1.22;
+    line-height: 1.2;
     color: var(--color-ink);
-    letter-spacing: -0.015em;
+    letter-spacing: -0.02em;
     margin: 0 0 10px 0;
     text-wrap: balance;
   }
 
   .slide-subtitle {
-    font-size: clamp(0.98rem, 1.28vw, 1.18rem);
+    font-size: clamp(0.98rem, 1.25vw, 1.15rem);
     color: var(--color-ink-muted);
     line-height: 1.62;
     margin: 0 0 24px 0;
-    max-width: 960px;
+    max-width: 1020px;
   }
 
-  /* Horizontal Stepper Row */
+  /* 無卡片框線之純排版三欄 (De-containerized Editorial Grid) */
   .editorial-stepper-row {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: clamp(24px, 3.5vw, 48px);
+    gap: clamp(24px, 3.5vw, 44px);
     width: 100%;
     position: relative;
-    margin-top: 8px;
+    margin-top: 6px;
   }
 
   .editorial-step-col {
@@ -158,6 +226,11 @@ const presentationStyles = `
     flex-direction: column;
     padding-top: 18px;
     border-top: 1.5px solid var(--color-hairline);
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
     transition: border-color 0.25s ease;
   }
 
@@ -165,34 +238,44 @@ const presentationStyles = `
     border-top-color: var(--color-ink);
   }
 
-  .step-header {
+  .col-lead {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
-  .step-num {
+  .col-num {
     font-family: var(--font-mono);
-    font-size: 0.82rem;
-    font-weight: 700;
+    font-size: 1.12rem;
+    font-weight: 800;
     color: var(--color-accent-terracotta);
-    letter-spacing: 0.08em;
+    line-height: 1;
+    letter-spacing: 0.04em;
   }
 
-  .step-tag {
-    font-size: 0.76rem;
-    font-weight: 600;
+  .col-num.forest {
+    color: var(--color-accent-forest);
+  }
+
+  .col-num.slate {
+    color: var(--color-accent-slate);
+  }
+
+  .col-tag {
+    font-size: 0.78rem;
+    font-weight: 700;
     color: var(--color-ink-light);
     letter-spacing: 0.04em;
   }
 
-  .step-title {
-    font-size: 1.35rem;
-    font-weight: 700;
-    line-height: 1.3;
+  .col-title {
+    font-family: var(--font-heading);
+    font-size: 1.28rem;
+    font-weight: 800;
+    line-height: 1.32;
     color: var(--color-ink);
-    margin: 0 0 14px 0;
+    margin: 0 0 12px 0;
   }
 
   /* Editorial Pure List */
@@ -202,12 +285,12 @@ const presentationStyles = `
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 11px;
   }
 
   .editorial-list li {
     font-size: 0.94rem;
-    line-height: 1.6;
+    line-height: 1.62;
     color: var(--color-ink-muted);
     position: relative;
     padding-left: 18px;
@@ -220,6 +303,7 @@ const presentationStyles = `
     top: 0;
     color: var(--color-hairline-strong);
     font-family: var(--font-mono);
+    font-weight: 700;
   }
 
   .editorial-list strong {
@@ -230,15 +314,10 @@ const presentationStyles = `
   /* Tension Split Row */
   .tension-split-row {
     display: grid;
-    grid-template-columns: 1.05fr 1.35fr;
-    gap: clamp(32px, 5vw, 64px);
+    grid-template-columns: 1.15fr 1fr;
+    gap: clamp(24px, 4vw, 54px);
     width: 100%;
-    align-items: start;
-    margin-top: 10px;
-  }
-
-  .tension-split-equal {
-    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
   }
 
   .tension-column {
@@ -247,34 +326,32 @@ const presentationStyles = `
   }
 
   .tension-column-bordered {
-    padding-left: clamp(24px, 4vw, 48px);
     border-left: 1px solid var(--color-hairline);
+    padding-left: clamp(20px, 3vw, 42px);
   }
 
   /* Monument Statement */
   .monument-statement {
-    padding: 20px 0;
-    border-top: 2px solid var(--color-ink);
-    border-bottom: 1px solid var(--color-hairline);
-    margin: 18px 0 22px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1.5px solid var(--color-ink);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }
 
   .monument-quote {
-    font-family: var(--font-ui);
-    font-size: clamp(1.15rem, 1.8vw, 1.55rem);
-    font-weight: 600;
-    line-height: 1.5;
+    font-family: var(--font-heading);
+    font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+    font-weight: 700;
+    line-height: 1.48;
     color: var(--color-ink);
-    letter-spacing: -0.01em;
   }
 
   .monument-author {
     font-family: var(--font-mono);
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 0.78rem;
+    font-weight: 700;
     color: var(--color-accent-terracotta);
     letter-spacing: 0.06em;
   }
@@ -287,22 +364,25 @@ const presentationStyles = `
     width: 100%;
     border-top: 1.5px solid var(--color-ink);
     border-bottom: 1px solid var(--color-hairline);
-    margin-top: 14px;
+    margin-top: 12px;
   }
 
   .contrast-side {
-    padding: 24px clamp(20px, 3vw, 40px);
+    padding: 22px clamp(18px, 2.5vw, 36px);
     display: flex;
     flex-direction: column;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
   .contrast-side:first-child {
     border-right: 1px solid var(--color-hairline);
-    background: rgba(28, 25, 23, 0.018);
+    background: rgba(20, 18, 17, 0.015) !important;
   }
 
   .contrast-side:last-child {
-    background: rgba(42, 95, 69, 0.035);
+    background: rgba(42, 95, 69, 0.025) !important;
   }
 
   .contrast-badge {
@@ -314,88 +394,152 @@ const presentationStyles = `
   }
 
   .contrast-term {
-    font-size: clamp(1.6rem, 2.4vw, 2.2rem);
+    font-family: var(--font-heading);
+    font-size: clamp(1.55rem, 2.3vw, 2.1rem);
     font-weight: 800;
     line-height: 1.2;
-    margin: 0 0 16px 0;
+    margin: 0 0 14px 0;
   }
 
-  /* Team Cards Grid (10 人雙排網格排版：2 排 × 5 欄) */
-  .team-cards-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 12px;
+  /* Team Roster Layout (精緻社論名冊架構，徹底揮別死板 AI 卡片網格) */
+  .team-roster-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     width: 100%;
     margin-top: 8px;
   }
 
-  .team-card {
-    padding: 13px 14px;
-    border: 1px solid var(--color-hairline);
-    border-radius: 6px;
-    background: rgba(28, 25, 23, 0.015);
+  .speakers-trio-row,
+  .speakers-quad-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+  }
+
+  .speaker-trio-item,
+  .speaker-quad-item {
+    border-top: 2.5px solid var(--color-accent-terracotta);
+    padding-top: 14px;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    transition: all 0.2s ease;
+    background: rgba(154, 52, 18, 0.035);
+    padding: 14px 16px;
+    border-radius: 4px;
   }
 
-  .team-card:hover {
-    border-color: var(--color-ink);
-    background: rgba(28, 25, 23, 0.035);
+  .speaker-trio-item.forest,
+  .speaker-quad-item.forest {
+    border-top-color: var(--color-accent-forest);
+    background: rgba(42, 95, 69, 0.035);
   }
 
-  .team-card.speaker-card {
-    border: 1.5px solid var(--color-accent-terracotta);
-    background: rgba(154, 52, 18, 0.03);
+  .speaker-trio-item.slate,
+  .speaker-quad-item.slate {
+    border-top-color: var(--color-accent-slate);
+    background: rgba(30, 58, 138, 0.035);
   }
 
-  .team-card.speaker-card-forest {
-    border: 1.5px solid var(--color-accent-forest);
-    background: rgba(42, 95, 69, 0.03);
+  .speaker-trio-item.amber,
+  .speaker-quad-item.amber {
+    border-top-color: #B45309;
+    background: rgba(180, 83, 9, 0.035);
   }
 
-  .team-card.speaker-card-slate {
-    border: 1.5px solid var(--color-accent-slate);
-    background: rgba(30, 58, 138, 0.03);
-  }
-
-  .team-badge {
+  .speaker-trio-badge,
+  .speaker-quad-badge {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.06em;
+    color: var(--color-accent-terracotta);
     margin-bottom: 5px;
-    color: var(--color-ink-light);
   }
 
-  .team-name {
-    font-size: 1.05rem;
+  .speaker-trio-badge.forest,
+  .speaker-quad-badge.forest {
+    color: var(--color-accent-forest);
+  }
+
+  .speaker-trio-badge.slate,
+  .speaker-quad-badge.slate {
+    color: var(--color-accent-slate);
+  }
+
+  .speaker-trio-badge.amber,
+  .speaker-quad-badge.amber {
+    color: #B45309;
+  }
+
+  .speaker-trio-name,
+  .speaker-quad-name {
+    font-family: var(--font-heading);
+    font-size: 1.28rem;
     font-weight: 800;
     color: var(--color-ink);
     margin: 0 0 5px 0;
   }
 
-  .team-role {
-    font-size: 0.78rem;
+  .speaker-trio-role,
+  .speaker-quad-role {
+    font-size: 0.81rem;
     line-height: 1.46;
+    color: var(--color-ink-muted);
+  }
+
+  .research-roster-strip {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    border-top: 1px solid var(--color-hairline);
+    padding-top: 16px;
+  }
+
+  .research-member-cell {
+    display: flex;
+    flex-direction: column;
+    border-left: 2px solid var(--color-hairline);
+    padding-left: 10px;
+  }
+
+  .research-tag {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--color-ink-light);
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+
+  .research-name {
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: var(--color-ink);
+    margin-bottom: 4px;
+  }
+
+  .research-desc {
+    font-size: 0.73rem;
+    line-height: 1.42;
     color: var(--color-ink-muted);
   }
 
   .team-summary-strip {
     display: flex;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 16px;
     align-items: center;
-    margin-top: 14px;
-    padding-top: 12px;
+    margin-top: 12px;
+    padding-top: 10px;
     border-top: 1px solid var(--color-hairline);
     font-size: 0.82rem;
   }
 
   /* Speaker Notes Drawer */
   .speaker-notes-drawer {
-    margin-top: 20px;
+    margin-top: 16px;
     width: 100%;
   }
 
@@ -418,20 +562,20 @@ const presentationStyles = `
 
   .notes-summary:hover {
     color: var(--color-ink);
-    background: rgba(28, 25, 23, 0.09);
+    background: rgba(20, 18, 17, 0.08);
     border-color: var(--color-ink);
   }
 
   .notes-body {
     margin-top: 10px;
-    padding: 16px 22px;
-    background: rgba(251, 248, 246, 0.95);
+    padding: 14px 20px;
+    background: rgba(251, 248, 246, 0.94);
     border-left: 2.5px solid var(--color-accent-forest);
     border-radius: 4px;
     font-size: 0.88rem;
     line-height: 1.72;
     color: var(--color-ink);
-    backdrop-filter: blur(14px);
+    backdrop-filter: blur(8px);
     border-top: 1px solid var(--color-hairline);
     border-right: 1px solid var(--color-hairline);
     border-bottom: 1px solid var(--color-hairline);
@@ -445,29 +589,29 @@ const presentationStyles = `
   /* Floating Prompter Window */
   .prompter-modal {
     position: fixed;
-    bottom: 80px;
+    bottom: 74px;
     left: 24px;
-    width: min(560px, calc(100vw - 48px));
-    max-height: 400px;
+    width: min(540px, calc(100vw - 48px));
+    max-height: 380px;
     overflow-y: auto;
     background: rgba(251, 248, 246, 0.98);
-    backdrop-filter: blur(32px);
-    -webkit-backdrop-filter: blur(32px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--color-hairline-strong);
     border-radius: 12px;
-    padding: 22px 26px;
-    box-shadow: 0 20px 50px rgba(28, 25, 23, 0.16);
+    padding: 20px 24px;
+    box-shadow: 0 16px 42px rgba(20, 18, 17, 0.14);
     z-index: 2000;
     display: none;
   }
 
   .prompter-modal.is-open {
     display: block;
-    animation: prompterFade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: prompterFade 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   @keyframes prompterFade {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
@@ -475,7 +619,7 @@ const presentationStyles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--color-hairline);
   }
@@ -507,22 +651,22 @@ const presentationStyles = `
     color: var(--color-ink);
   }
 
-  /* Presenter Dock */
+  /* Clean Presenter Dock */
   .slide-dock {
     position: fixed;
-    bottom: 22px;
+    bottom: 20px;
     left: 24px;
     z-index: 120;
     display: flex;
     align-items: center;
     gap: 8px;
     background: rgba(251, 248, 246, 0.94);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--color-hairline);
     border-radius: 99px;
     padding: 6px 14px;
-    box-shadow: 0 6px 24px rgba(28, 25, 23, 0.06);
+    box-shadow: 0 6px 20px rgba(20, 18, 17, 0.06);
   }
 
   .dock-btn {
@@ -541,7 +685,7 @@ const presentationStyles = `
   }
 
   .dock-btn:hover {
-    background: rgba(28, 25, 23, 0.08);
+    background: rgba(20, 18, 17, 0.08);
   }
 
   .dock-counter {
@@ -571,8 +715,9 @@ const presentationStyles = `
 
   /* Responsive Rules */
   @media (max-width: 1100px) {
-    .team-cards-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    .research-roster-strip {
+      grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+      gap: 14px;
     }
   }
 
@@ -580,15 +725,17 @@ const presentationStyles = `
     .editorial-stepper-row,
     .tension-split-row,
     .tension-split-equal,
-    .contrast-grid {
+    .contrast-grid,
+    .speakers-trio-row,
+    .speakers-quad-row {
       grid-template-columns: 1fr !important;
-      gap: 24px;
+      gap: 22px;
     }
     .tension-column-bordered {
       padding-left: 0;
       border-left: none;
       border-top: 1px solid var(--color-hairline);
-      padding-top: 20px;
+      padding-top: 18px;
     }
     .contrast-side:first-child {
       border-right: none;
@@ -596,13 +743,16 @@ const presentationStyles = `
     }
     .presentation-slide > .container {
       justify-content: flex-start !important;
-      padding-top: 85px !important;
+      padding-top: 80px !important;
     }
   }
 
   @media (max-width: 720px) {
-    .team-cards-grid {
+    .research-roster-strip {
       grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+    .presentation-slide {
+      scroll-snap-stop: normal !important;
     }
   }
 
@@ -616,272 +766,31 @@ const presentationStyles = `
     font-weight: 700 !important;
   }
 
-  /* ==========================================================================
-     TYPOGRAPHY & LAYOUT ENHANCEMENTS (FLUID CLAMP & ZERO-CLS & BALANCE)
-     ========================================================================== */
-  .slide-title {
-    font-size: clamp(2rem, 3.8vw, 3.4rem) !important;
-    font-weight: 800 !important;
-    line-height: 1.18 !important;
-    letter-spacing: -0.022em !important;
-    text-wrap: balance !important;
+  /* Slide 12 Immersive Holographic View */
+  #slide-12 .slide-title,
+  #slide-12 .slide-subtitle,
+  #slide-12 .tension-split-row,
+  #slide-12 .speaker-notes-drawer,
+  #slide-12 #slide12-toggle-view {
+    transition: opacity 0.35s ease, transform 0.35s ease;
   }
-
-  .slide-subtitle {
-    font-size: clamp(1rem, 1.25vw, 1.22rem) !important;
-    line-height: 1.72 !important;
-    letter-spacing: -0.01em !important;
-    text-wrap: pretty !important;
+  #slide-12.is-immersed .slide-title,
+  #slide-12.is-immersed .slide-subtitle,
+  #slide-12.is-immersed .tension-split-row,
+  #slide-12.is-immersed .speaker-notes-drawer,
+  #slide-12.is-immersed #slide12-toggle-view {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(12px);
   }
-
-  .step-title, .tension-title, .contrast-heading, .debate-statement {
-    text-wrap: balance !important;
-    letter-spacing: -0.015em !important;
+  #slide-12.is-immersed .immersed-hint {
+    display: block !important;
+    animation: fadeInHint 0.4s ease forwards;
   }
-
-  .editorial-list li {
-    line-height: 1.7 !important;
-    letter-spacing: -0.012em !important;
+  @keyframes fadeInHint {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
   }
-
-  .quote-block {
-    font-size: clamp(1.05rem, 1.3vw, 1.25rem) !important;
-    line-height: 1.75 !important;
-    text-wrap: pretty !important;
-  }
-
-  .metric-num {
-    font-size: clamp(2.4rem, 4vw, 3.6rem) !important;
-    font-family: var(--font-mono) !important;
-    font-weight: 800 !important;
-    line-height: 1 !important;
-    letter-spacing: -0.03em !important;
-  }
-
-  /* Performance: Content visibility & layout containment */
-  .presentation-slide:not([data-active]) {
-    content-visibility: auto !important;
-    contain-intrinsic-size: 100vw 100vh !important;
-  }
-
-  /* ==========================================================================
-     CINEMATIC WIDESCREEN & LETTERBOX (2.39:1 ANAMORPHIC CINEMA MODE)
-     ========================================================================== */
-  .cinematic-letterbox {
-    position: fixed;
-    left: 0;
-    right: 0;
-    height: 0;
-    background: #000000;
-    z-index: 9990;
-    pointer-events: none;
-    transition: height 0.65s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .cinematic-letterbox.top { top: 0; }
-  .cinematic-letterbox.bottom { bottom: 0; }
-
-  body.cinema-mode .cinematic-letterbox {
-    height: clamp(38px, 7.5vh, 76px);
-  }
-
-  body.cinema-mode {
-    --color-paper: #0B0A09 !important;
-    --color-ink: #F7F4F0 !important;
-    --color-ink-muted: rgba(247, 244, 240, 0.76) !important;
-    --color-ink-light: rgba(247, 244, 240, 0.48) !important;
-    --color-ink-faint: rgba(247, 244, 240, 0.1) !important;
-    --color-hairline: rgba(247, 244, 240, 0.15) !important;
-    --color-hairline-strong: rgba(247, 244, 240, 0.35) !important;
-    --color-surface-faint: rgba(247, 244, 240, 0.04) !important;
-    background-color: #0B0A09 !important;
-    color: #F7F4F0 !important;
-  }
-
-  body.cinema-mode .slide-stage-wrapper {
-    filter: drop-shadow(0 14px 42px rgba(0, 0, 0, 0.7));
-  }
-
-  body.cinema-mode .contrast-card,
-  body.cinema-mode .tension-column-bordered,
-  body.cinema-mode .editorial-step-col {
-    background: rgba(18, 16, 15, 0.75) !important;
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    border-color: rgba(247, 244, 240, 0.18) !important;
-  }
-
-  /* ==========================================================================
-     CINEMATIC HUD (REC, TIMECODE, 35MM FILM STAMP, CHAPTER)
-     ========================================================================== */
-  .cinematic-hud {
-    position: fixed;
-    top: clamp(12px, 2.2vh, 22px);
-    left: clamp(16px, 3.5vw, 48px);
-    right: clamp(16px, 3.5vw, 48px);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    z-index: 9995;
-    pointer-events: none;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-  }
-
-  body.cinema-mode .cinematic-hud {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .hud-left, .hud-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .hud-rec-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #E11D48;
-    box-shadow: 0 0 10px #E11D48;
-    animation: hudBlink 1s infinite alternate;
-  }
-
-  @keyframes hudBlink {
-    0% { opacity: 0.25; }
-    100% { opacity: 1; }
-  }
-
-  .hud-tag {
-    background: rgba(247, 244, 240, 0.12);
-    color: #F7F4F0;
-    padding: 3px 8px;
-    border-radius: 4px;
-    border: 1px solid rgba(247, 244, 240, 0.2);
-    font-weight: 700;
-  }
-
-  .hud-tag-accent {
-    background: rgba(154, 52, 18, 0.4);
-    border-color: rgba(154, 52, 18, 0.7);
-    color: #FFEDD5;
-  }
-
-  /* ==========================================================================
-     THEMATIC VIDEO & CINEMATIC BACKDROP LAYERS
-     ========================================================================== */
-  #cinematic-backdrop-container {
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1;
-    pointer-events: none;
-    overflow: hidden;
-  }
-
-  #thematic-video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.8s ease;
-    filter: brightness(0.68) contrast(1.18) saturate(0.85);
-  }
-
-  body.video-active #thematic-video {
-    opacity: 0.38;
-  }
-
-  body.cinema-mode.video-active #thematic-video {
-    opacity: 0.65;
-  }
-
-  #procedural-film-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    transition: opacity 0.8s ease;
-    mix-blend-mode: screen;
-  }
-
-  body.procedural-active #procedural-film-canvas {
-    opacity: 0.52;
-  }
-
-  #cinematic-particles-canvas {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2;
-    pointer-events: none;
-    mix-blend-mode: multiply;
-    transition: opacity 0.5s ease;
-  }
-
-  body.cinema-mode #cinematic-particles-canvas {
-    mix-blend-mode: screen;
-  }
-
-  .film-grain-overlay {
-    position: fixed;
-    inset: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 3;
-    pointer-events: none;
-    opacity: 0.045;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    mix-blend-mode: overlay;
-  }
-
-  body.cinema-mode .film-grain-overlay {
-    opacity: 0.085;
-  }
-
-  /* Morph Indicator Badge */
-  .particle-morph-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: var(--color-ink-faint);
-    color: var(--color-ink-muted);
-    border: 1px solid var(--color-hairline);
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.2s ease;
-  }
-
-  .particle-morph-badge:hover {
-    background: var(--color-ink-light);
-    color: var(--color-paper);
-  }
-
-  body.cinema-mode .particle-morph-badge {
-    background: rgba(247, 244, 240, 0.12);
-    color: #F7F4F0;
-    border-color: rgba(247, 244, 240, 0.25);
-  }
-
-  .dock-btn.is-active {
-    background: var(--color-accent-terracotta) !important;
-    color: #FFFFFF !important;
-    border-color: var(--color-accent-terracotta) !important;
-  }
-
 </style>
 `;
 
@@ -892,24 +801,26 @@ if (html.includes('id="presentation-editorial-styles"')) {
   html = html.replace('</head>', `${presentationStyles}\n</head>`);
 }
 
-// 2. Prepare 12 Slides HTML: Faithful, De-AI-ified, Humanized
+// 2. Prepare 12 Slides HTML: Professor 蔡孟哲 教授, 10 Members, True Gradient Blur
 const slidesHtml = `
 <!-- ==================== SLIDE 1: 封面頁 ==================== -->
-<section class="presentation-slide hero" id="slide-1" data-chapter="pin" data-shape="orb" data-astro-cid-pp7d62ca>
+<section class="presentation-slide hero" id="slide-1" data-chapter="pin" data-shape="orb" data-video="./assets/dancers-pingpong-720p.mp4?v=20261005_2" data-astro-cid-pp7d62ca>
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container" data-astro-cid-pp7d62ca>
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 01 / 12</span>
-        <span class="badge-topic">國立高雄師範大學 通識教育課程｜性別與文化導讀報告</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">01</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">國立高雄師範大學 通識教育課程 ｜ 性別與文化導讀報告</span>
       </div>
 
       <div class="tension-split-row" style="margin-top: 6px;">
         <div class="tension-column">
-          <h1 class="slide-title" style="font-family: var(--font-heading); font-size: clamp(2.3rem, 4.2vw, 3.6rem); line-height: 1.18; margin-bottom: 16px;">
+          <h1 class="slide-title" style="font-size: clamp(2.3rem, 4.2vw, 3.6rem); line-height: 1.18; margin-bottom: 16px;">
             話語即權力：<br>日常語言與網路文化中的性別密碼
           </h1>
           <p class="slide-subtitle" style="font-size: clamp(1.02rem, 1.3vw, 1.2rem); line-height: 1.68;">
-            為什麼我們習慣這樣說話？從日常幹話、網路流行語到體制常規的性別觀察<br>
+            從流行語、幹話互動到體制常規的性別反思<br>
             <span style="color: var(--color-accent-terracotta); font-weight: 600;">經典導讀文本：《臺灣性別100+問》（專題研讀：第一章至第三章）</span>
           </p>
         </div>
@@ -918,23 +829,24 @@ const slidesHtml = `
           <div style="display: flex; flex-direction: column; gap: 18px;">
             <div style="border-bottom: 1px solid var(--color-hairline); padding-bottom: 12px;">
               <div style="font-family: var(--font-mono); font-size: 0.74rem; color: var(--color-ink-light); letter-spacing: 0.08em; margin-bottom: 4px;">INSTRUCTOR 指導教授</div>
-              <div style="font-size: 1.22rem; font-weight: 800; color: var(--color-ink);">陳竹上 教授</div>
+              <div style="font-size: 1.22rem; font-weight: 800; color: var(--color-ink);">蔡孟哲 教授</div>
               <div style="font-size: 0.84rem; color: var(--color-ink-muted); margin-top: 2px;">國立高雄師範大學 通識教育中心</div>
             </div>
 
             <div style="border-bottom: 1px solid var(--color-hairline); padding-bottom: 12px;">
-              <div style="font-family: var(--font-mono); font-size: 0.74rem; color: var(--color-accent-forest); letter-spacing: 0.08em; margin-bottom: 4px;">PRESENTATION TEAM 報告團隊</div>
-              <div style="font-size: 1.05rem; font-weight: 800; color: var(--color-ink); line-height: 1.45;">
-                口頭主講代表：廖峻毅、陳品昊、林展頡<br>
-                <span style="font-size: 0.86rem; font-weight: 600; color: var(--color-ink-muted);">專案研究統整：李昕澤、江沂絃、林季頻、林博閎、林亨澤、郭泓佑、鄭傑尹</span>
+              <div style="font-family: var(--font-mono); font-size: 0.74rem; color: var(--color-accent-forest); letter-spacing: 0.08em; margin-bottom: 6px;">PRESENTATION TEAM 報告團隊</div>
+              <div style="font-size: 0.98rem; font-weight: 700; color: var(--color-ink); line-height: 1.75;">
+                <div>口頭主講代表：郭泓佑、林博閎、林亨澤、陳品昊</div>
+                <div>報告簡報製作：林季頫</div>
+                <div>專案研究統整：廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹</div>
               </div>
-              <div style="font-size: 0.8rem; color: var(--color-ink-light); margin-top: 4px;">全組 10 位組員分工研討製作</div>
+              <div style="font-size: 0.8rem; color: var(--color-ink-light); margin-top: 6px;">全組 10 位組員分工研討製作</div>
             </div>
 
             <div>
               <div style="font-family: var(--font-mono); font-size: 0.74rem; color: var(--color-accent-terracotta); letter-spacing: 0.08em; margin-bottom: 4px;">CORE PERSPECTIVE 核心提問</div>
               <div style="font-size: 0.92rem; line-height: 1.6; color: var(--color-ink); font-weight: 500;">
-                脫口而出的口頭禪和網路迷因，是在開玩笑，還是默默替誰決定了高低順序？
+                脫口而出的口頭禪與社群迷因，究竟反映並維繫了什麼樣的性別權力關係？
               </div>
             </div>
           </div>
@@ -944,7 +856,7 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【廖峻毅提示】</strong>「老師、各位同學好，我們是第 3 組。這次報告由全組 10 位同學一起分工完成，從文獻、網路案例到法條都有深入整理，今天由我和品昊、展頡代表上台。我們讀《臺灣性別100+問》時很有共鳴：大家平常互嗆、在論壇推文，第一反應都是『笑笑就好、幹嘛那麼認真』。但很多我們講得極順口的習慣，背後其實都在替某種權力秩序護航。今天我們就從大家每天最常脫口而出的話開始聊。」
+          <strong>【郭泓佑提示】</strong>「蔡老師、各位同學好，我們是第 3 組。這次專題由我們全組 10 位組員共同研討完成，文獻考證、時事語料蒐集與法規爬梳由峻毅、昕澤、沂絃、展頡與傑尹負責，簡報由季頫統整視覺架構，今天由我、博閎、亨澤與品昊 4 位代表上台主講分享。我們讀《臺灣性別100+問》時發現一個很有感的現象：大家平時講話、滑手機發廢文，常覺得『只是嘴砲、好玩而已』。但很多說話習慣，其實已經把性別框架講成了理所當然。今天我們就從大家每天聽到的日常對話聊起。」
         </div>
       </details>
     </div>
@@ -953,85 +865,104 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 2: 團隊陣容與專案分工 ==================== -->
 <section class="presentation-slide concept" id="slide-2" data-chapter="pin" data-shape="clarity">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 02 / 12</span>
-        <span class="badge-topic">團隊陣容與專案分工 ｜ 全組 10 人精準配置</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">02</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">團隊陣容與專案分工 ｜ 全組 10 人精準配置</span>
       </div>
-      <h2 class="slide-title">團隊分工與報告藍圖</h2>
-      <p class="slide-subtitle">文獻、習俗、網路田野到法律條文，全體 10 位組員共同協作完成</p>
+      <h2 class="slide-title">全體 10 位組員研究配置與報告藍圖</h2>
+      <p class="slide-subtitle">結合文獻研析、習俗考證、網路田野與法規爬梳，全組協同協作</p>
 
-      <!-- 2 排 × 5 欄卡片式網格 -->
-      <div class="team-cards-grid">
-        <!-- 上排：專案研究統整組 (5 人) -->
-        <div class="team-card">
-          <div class="team-badge">#01 專案研討</div>
-          <div class="team-name">李昕澤</div>
-          <div class="team-role">文獻研讀與論述協調，梳理《臺灣性別100+問》核心章節學術脈絡。</div>
-        </div>
-        <div class="team-card">
-          <div class="team-badge">#02 文化考證</div>
-          <div class="team-name">江沂絃</div>
-          <div class="team-role">習俗儀式象徵分析，考證婚俗丟扇、踩瓦與潑水出嫁之性別寓意。</div>
-        </div>
-        <div class="team-card">
-          <div class="team-badge">#03 案例研究</div>
-          <div class="team-name">林季頻</div>
-          <div class="team-role">語言客體化現象蒐集，整理論壇厭女標籤與日常性別粗口案例。</div>
-        </div>
-        <div class="team-card">
-          <div class="team-badge">#04 資料統整</div>
-          <div class="team-name">林博閎</div>
-          <div class="team-role">性平法制演進爬梳，對照民法從母姓現況、憲判字第 4 號與刑法 319-3 條。</div>
-        </div>
-        <div class="team-card">
-          <div class="team-badge">#05 問卷反思</div>
-          <div class="team-name">林亨澤</div>
-          <div class="team-role">課堂討論題目設計，聚焦同儕互動經驗與現場換你答思辨題型。</div>
+      <div class="team-roster-layout">
+        <!-- 上層：4 位口頭主講代表 (Featured 4 Speakers) -->
+        <div class="speakers-quad-row">
+          <div class="speaker-quad-item">
+            <div class="speaker-quad-badge">#01 🎙️ SPEAKER 1</div>
+            <div class="speaker-quad-name">郭泓佑</div>
+            <div class="speaker-quad-role"><strong>主講章節（P.01–P.03）：</strong>導讀開場、全組分工、父權體制盲點與前情回顧（Allan Johnson 體制結構與婚俗法規）。</div>
+          </div>
+
+          <div class="speaker-quad-item forest">
+            <div class="speaker-quad-badge forest">#02 🎙️ SPEAKER 2</div>
+            <div class="speaker-quad-name">林博閎</div>
+            <div class="speaker-quad-role"><strong>主講章節（P.04–P.05）：</strong>破除生理決定論（Julia Wood 雙性化溝通）、日常三字經髒話與器官污名批判。</div>
+          </div>
+
+          <div class="speaker-quad-item slate">
+            <div class="speaker-quad-badge slate">#03 🎙️ SPEAKER 3</div>
+            <div class="speaker-quad-name">林亨澤</div>
+            <div class="speaker-quad-role"><strong>主講章節（P.06–P.08）：</strong>網路論壇標籤與寒蟬效應、從吃豆腐到性騷擾的命名賦權、私密影像刑法正名。</div>
+          </div>
+
+          <div class="speaker-quad-item amber">
+            <div class="speaker-quad-badge amber">#04 🎙️ SPEAKER 4</div>
+            <div class="speaker-quad-name">陳品昊</div>
+            <div class="speaker-quad-role"><strong>主講章節（P.09–P.12）：</strong>男性同儕「幹話文化」與恐同焦慮、主持現場三大互動思辨題、話語即權力總結與謝幕。</div>
+          </div>
         </div>
 
-        <!-- 下排：口頭主講與架構綜理組 (5 人) -->
-        <div class="team-card speaker-card">
-          <div class="team-badge" style="color: var(--color-accent-terracotta);">#06 🎙️ SPEAKER 1</div>
-          <div class="team-name">廖峻毅</div>
-          <div class="team-role">導讀、生理迷思與雙性化溝通；串聯體制結構至 Julia Wood 社會化理論。</div>
-        </div>
-        <div class="team-card speaker-card speaker-card-forest">
-          <div class="team-badge" style="color: var(--color-accent-forest);">#07 🎙️ SPEAKER 2</div>
-          <div class="team-name">陳品昊</div>
-          <div class="team-role">性別辱罵、網路流行語與寒蟬效應；剖析器官污名與數位論壇雙標。</div>
-        </div>
-        <div class="team-card speaker-card speaker-card-slate">
-          <div class="team-badge" style="color: var(--color-accent-slate);">#08 🎙️ SPEAKER 3</div>
-          <div class="team-name">林展頡</div>
-          <div class="team-role">概念命名史與男性幹話文化剖析；拆解吃豆腐到性騷擾與直男防衛機制。</div>
-        </div>
-        <div class="team-card">
-          <div class="team-badge">#09 視覺架構</div>
-          <div class="team-name">郭泓佑</div>
-          <div class="team-role">投影片邏輯架構協調，維持編輯社論風層次與視覺節奏。</div>
-        </div>
-        <div class="team-card">
-          <div class="team-badge">#10 提問綜理</div>
-          <div class="team-name">鄭傑尹</div>
-          <div class="team-role">性別盲點與結語收束，統整討論回饋與平權實踐落實方向。</div>
+        <!-- 下層：6 位研究與製作專責組員 (Design & Research Specialists) -->
+        <div class="research-roster-strip">
+          <div class="research-member-cell">
+            <div class="research-tag">#01 報告簡報製作</div>
+            <div class="research-name">林季頫</div>
+            <div class="research-desc">簡報架構製作與視覺排版，統整全體 10 位組員研究成果。</div>
+          </div>
+
+          <div class="research-member-cell">
+            <div class="research-tag">#02 文獻研讀</div>
+            <div class="research-name">廖峻毅</div>
+            <div class="research-desc">文獻研析與架構梳理，爬梳 Allan Johnson 社會學論述。</div>
+          </div>
+
+          <div class="research-member-cell">
+            <div class="research-tag">#03 專案研討</div>
+            <div class="research-name">李昕澤</div>
+            <div class="research-desc">核心論述整合與資料考據，協調章節主題銜接。</div>
+          </div>
+
+          <div class="research-member-cell">
+            <div class="research-tag">#04 文化考證</div>
+            <div class="research-name">江沂絃</div>
+            <div class="research-desc">習俗儀式象徵分析，考證丟扇、踩瓦寓意。</div>
+          </div>
+
+          <div class="research-member-cell">
+            <div class="research-tag">#05 法規爬梳</div>
+            <div class="research-name">林展頡</div>
+            <div class="research-desc">法制演進爬梳，對照性別平等與司法判決。</div>
+          </div>
+
+          <div class="research-member-cell">
+            <div class="research-tag">#06 提問綜理</div>
+            <div class="research-name">鄭傑尹</div>
+            <div class="research-desc">性別盲點與結語收束，統整平權落實方向。</div>
+          </div>
         </div>
       </div>
 
       <div class="team-summary-strip">
-        <span class="badge-index" style="background: rgba(154,52,18,0.08); color: var(--color-accent-terracotta); border-color: rgba(154,52,18,0.2);">
-          🟠 3 位口頭主講：廖峻毅、陳品昊、林展頡
+        <span style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-terracotta);">
+          🟠 4 位口頭主講代表：郭泓佑 ｜ 林博閎 ｜ 林亨澤 ｜ 陳品昊
         </span>
-        <span class="badge-index" style="background: rgba(28,25,23,0.04); color: var(--color-ink-muted); border-color: var(--color-hairline);">
-          ⚪ 7 位研究統整：李昕澤、江沂絃、林季頻、林博閎、林亨澤、郭泓佑、鄭傑尹
+        <span style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-ink-muted);">
+          ⚪ 1 位報告簡報製作：林季頫
+        </span>
+        <span style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-ink-muted);">
+          ⚪ 5 位專案研究統整：廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹
+        </span>
+        <span style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--color-ink-light); margin-left: auto;">
+          蔡孟哲 教授 指導 ｜ 國立高雄師範大學
         </span>
       </div>
 
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【廖峻毅提示】</strong>「我們第 3 組採取嚴謹的專案分工：由昕澤研讀文獻、沂絃考證習俗、季頻蒐集網路案例、博閎整理法制修法、亨澤設計現場討論題，並由泓佑與傑尹協調投影片邏輯與收尾。上台部分分為三個段落：我先負責導讀並破除男女溝通迷思；接著品昊會剖析髒話與論壇流行語裡的權力階序與寒蟬效應；最後展頡會說明法律正名歷史與男性幹話防衛機制，並主持現場討論。」
+          <strong>【郭泓佑提示】</strong>「我們第 3 組採取嚴謹的專案分工，全組 10 位組員全員到位：簡報由季頫統整視覺架構排版，研究統整由峻毅、昕澤、沂絃、展頡與傑尹深究田野資料。上台部分由 4 位組員分工接力：我先負責第 1 至 3 頁的前情導讀與體制拆解；接著博閎主講第 4 至 5 頁的溝通生理迷思與日常髒話批判；亨澤主講第 6 至 8 頁的網路標籤雙標與法律命名正名歷史；最後由品昊主講第 9 至 12 頁的男性幹話文化剖析、主持現場同學互動並作平權結語。」
         </div>
       </details>
     </div>
@@ -1040,47 +971,49 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 3: 體制盲點與前情回顧 ==================== -->
 <section class="presentation-slide needs" id="slide-3" data-chapter="pin" data-shape="musicalDna">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 03 / 12</span>
-        <span class="badge-topic">體制盲點與前情回顧 ｜ Ch1 & Ch2 精華串聯</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">03</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">體制盲點與前情回顧 ｜ CH1 & CH2 精華串聯</span>
       </div>
-      <h2 class="slide-title">體制盲點：說話的習慣，往往是制度教出來的</h2>
-      <p class="slide-subtitle">話不是憑空冒出來的，它背後連著父權結構與從小看到的習俗規矩</p>
+      <h2 class="slide-title">體制盲點：語言背後是結構的投射</h2>
+      <p class="slide-subtitle">日常話語並非孤立存在，脫口而出的偏見常是深層體制與傳統習俗的延伸</p>
 
       <div class="tension-split-row">
         <div class="tension-column">
           <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-terracotta); letter-spacing: 0.08em; margin-bottom: 8px;">
-            [CH1 體制結構]
+            CH1 體制結構 ｜ Allan Johnson 父權體制特徵
           </div>
-          <h3 style="font-size: 1.35rem; font-weight: 800; margin: 0 0 14px 0; color: var(--color-ink);">
-            Allan Johnson 父權體制四大特徵
+          <h3 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; margin: 0 0 14px 0; color: var(--color-ink);">
+            父權體制四大特徵
           </h3>
           <ul class="editorial-list" style="gap: 12px;">
-            <li><strong>男性支配（Male-Dominated）：</strong>政治、經濟與重要決策權力長年集中在男性手中。</li>
-            <li><strong>認同男性（Male-Identified）：</strong>文化核心把果斷、理性等陽剛特質預設為唯一標準。</li>
-            <li><strong>以男性為中心（Male-Centered）：</strong>歷史敘事與焦點圍繞男性經驗，女性視角常淪為陪襯。</li>
-            <li><strong>由男性控制（Obsession with Control）：</strong>高度強調支配感，包含對他人、情感與弱勢群體的控制。</li>
+            <li><strong>男性支配 (Male-Dominated)：</strong>政治、經濟與重要決策權力長年集中在男性手中。</li>
+            <li><strong>認同男性 (Male-Identified)：</strong>文化核心把果斷、理性等陽剛特質預設為唯一標準。</li>
+            <li><strong>以男性為中心 (Male-Centered)：</strong>歷史敘事與焦點圍繞男性經驗，女性視角常淪為陪襯。</li>
+            <li><strong>由男性控制 (Obsession with Control)：</strong>高度強調支配感，包含對他人、情感與弱勢群體的控制。</li>
           </ul>
         </div>
 
         <div class="tension-column tension-column-bordered">
           <div style="border-bottom: 1px solid var(--color-hairline); padding-bottom: 16px; margin-bottom: 16px;">
             <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-forest); letter-spacing: 0.08em; margin-bottom: 6px;">
-              [CH2 習俗規範] 婚俗中的文化暴力
+              CH2 習俗規範 ｜ 婚俗中的文化暴力
             </div>
             <p style="font-size: 0.92rem; line-height: 1.62; color: var(--color-ink-muted); margin: 0;">
-              <strong>丟扇子、踩瓦片、跨火爐、潑水出嫁：</strong>表面是討吉利、避邪除煞，實際上卻把新娘當成「帶有壞脾氣與晦氣的外人」，在儀式上切斷她和原生家庭的連結。
+              <strong>丟扇子、踩瓦片、跨火爐、潑水出嫁：</strong>表面是祈求吉利與除煞，深層卻將出嫁女性象徵化為「帶有壞脾氣與晦氣的外人」，並在儀式中切斷她與原生家庭的平權連結。
             </p>
           </div>
 
           <div>
             <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-slate); letter-spacing: 0.08em; margin-bottom: 6px;">
-              [法制演進] 體制框架的鬆動與限制
+              法制演進 ｜ 體制框架的鬆動與限制
             </div>
             <p style="font-size: 0.92rem; line-height: 1.62; color: var(--color-ink-muted); margin: 0;">
-              <strong>從母姓與身分認同：</strong>民法雖然已經允許子女從母姓，但現在登記從母姓的比例依然只有大約 5%；2022 年憲判字第 4 號也宣告「原住民身分綁漢人父姓」違憲。法律雖然在修，但父系宗族的約束力在日常生活裡還是很強。
+              <strong>從母姓與身分認同：</strong>民法雖已修法允許子女從母姓，但實務上登記從母姓的比例仍只有約 5%；2022 年憲判字第 4 號宣告「原住民身分綁漢人父姓」違憲。法律在前進，但父系宗族約束力依然強固。
             </p>
           </div>
         </div>
@@ -1088,15 +1021,15 @@ const slidesHtml = `
 
       <div class="monument-statement">
         <div class="monument-quote" style="font-size: 1.15rem; font-family: var(--font-ui); font-weight: 600;">
-          法律修了，習俗卻根深蒂固：從 Allan Johnson 說的男性支配，到婚禮上踩瓦片把新娘當帶晦氣的外人，父權邏輯就是這樣悄悄變成了大家的反射動作。
+          制度不是只寫在法條裡：從社會結構（男性支配、認同男性）、傳統習俗（踩瓦片視女性為外人），到日常說話習慣，父權邏輯是一步步內化成生活直覺的。
         </div>
-        <div class="monument-author">階梯進程：體制結構（Ch1）➔ 習俗規範（Ch2）➔ 語言日常（Ch3）</div>
+        <div class="monument-author">階梯進程：體制結構 (Ch1) ➔ 習俗規範 (Ch2) ➔ 語言日常 (Ch3)</div>
       </div>
 
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【廖峻毅提示】</strong>「在進入第三章語言討論之前，我們先把前兩章的概念串起來。我們每天講的話不是憑空出現的，它是背後體制與傳統習俗的投射。社會學家 Allan Johnson 指出，父權體制有四個核心特徵：男性支配、認同男性、以男性為中心與渴望控制；而第二章提到的丟扇子、踩瓦片，表面是討喜氣，實際上把出嫁女性當成帶晦氣的外人。就連民法修法允許從母姓，至今也只有約 5% 的人登記從母姓。有了這層結構概念，我們就能看清日常語言是怎麼替這些舊觀念護航的。」
+          <strong>【郭泓佑提示】</strong>「在進入第三章語言討論之前，我們先把前兩章的概念串起來。我們每天講的話不是憑空出現的，它是背後體制與傳統習俗的投射。社會學家 Allan Johnson 指出，父權體制有四個核心特徵：男性支配、認同男性、以男性為中心與渴望控制；而第二章提到的丟扇子、踩瓦片，表面是討喜氣，實際上把出嫁女性當成帶晦氣的外人。就連民法修法允許從母姓，至今也只有約 5% 的人登記從母姓。有了這層結構概念，我們就能看清日常語言是怎麼替這些舊觀念護航的。接下來把麥克風交給博閎，為大家拆解男女溝通風格與髒話背後的階序。」
         </div>
       </details>
     </div>
@@ -1105,14 +1038,16 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 4: 破除刻板印象 (男女溝通真的不同星球嗎？) ==================== -->
 <section class="presentation-slide science" id="slide-4" data-chapter="pin" data-shape="cymatics">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 04 / 12</span>
-        <span class="badge-topic">Ch3 Q1 ｜ 破除刻板印象</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">04</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">CH3 Q1 ｜ 破除刻板印象與生理決定論</span>
       </div>
       <h2 class="slide-title">破除刻板印象：男女溝通真的不同星球嗎？</h2>
-      <p class="slide-subtitle">別再拿「男女天生大腦不同」當藉口：溝通方式是從小學來的，既能聽懂對方、又能清楚表達，人人都能練習。</p>
+      <p class="slide-subtitle">質疑生理宿命論，拒絕溝通怠惰，邁向同理與果斷並存的雙性化溝通</p>
 
       <div class="tension-split-row">
         <div class="tension-column">
@@ -1130,20 +1065,20 @@ const slidesHtml = `
         <div class="tension-column tension-column-bordered">
           <div style="border-bottom: 1px solid var(--color-hairline); padding-bottom: 16px; margin-bottom: 16px;">
             <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-forest); letter-spacing: 0.08em; margin-bottom: 6px;">
-              [JULIA WOOD 社會化理論]
+              JULIA WOOD 社會化理論
             </div>
-            <h4 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 8px 0; color: var(--color-ink);">童年遊戲形塑說話風格</h4>
+            <h4 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800; margin: 0 0 8px 0; color: var(--color-ink);">童年遊戲形塑說話風格</h4>
             <ul class="editorial-list" style="gap: 10px;">
-              <li><strong>男童群體（競爭型遊戲）：</strong>常玩球類、競賽，重視輸贏與規則階層，練出以傳遞資訊為主的「報告型風格（Report Talk）」。</li>
-              <li><strong>女童群體（關係型遊戲）：</strong>常玩扮家家酒、聊天，重視輪流、感受與同理，練出以建立連結為主的「關係連網型風格（Rapport Talk）」。</li>
+              <li><strong>男童群體（競爭型遊戲）：</strong>常玩球類、競賽，重視輸贏與規則階層，練出以傳遞資訊為主的「報告型風格 (Report Talk)」。</li>
+              <li><strong>女童群體（關係型遊戲）：</strong>常玩扮家家酒、聊天，重視輪流、感受與同理，練出以建立連結為主的「關係連網型風格 (Rapport Talk)」。</li>
             </ul>
           </div>
 
           <div>
             <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-terracotta); letter-spacing: 0.08em; margin-bottom: 6px;">
-              [平權實踐] 突破二元標籤
+              平權實踐 ｜ 突破二元標籤
             </div>
-            <h4 style="font-size: 1.15rem; font-weight: 700; margin: 0 0 8px 0; color: var(--color-ink);">雙性化溝通（Androgynous Communication）</h4>
+            <h4 style="font-family: var(--font-heading); font-size: 1.15rem; font-weight: 800; margin: 0 0 8px 0; color: var(--color-ink);">雙性化溝通 (Androgynous Communication)</h4>
             <p style="font-size: 0.92rem; line-height: 1.6; color: var(--color-ink-muted); margin: 0;">
               跳脫「男要果斷、女要溫柔」的框架。該劃清界線時把話講清楚，該同理時好好聽對方說，兩者都是後天可以學會的對話能力，不是天生性格。
             </p>
@@ -1154,7 +1089,7 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【廖峻毅提示】</strong>「每次情侶吵架，大家最愛搬出《男人來自火星，女人來自金星》，好像講一句『男女大腦天生不同』，就可以兩手一攤不解決問題。但 Julia Wood 跟現代神經科學都打臉這件事：大腦可塑性很高，同一群男生或同一群女生之間的個別差異，遠遠大過男女平均值。那為什麼溝通風格看起來差很多？因為小時候玩的遊戲不同：男生常玩比輸贏的球賽，習慣『只講重點、爭主導權』的報告型說話；女生常玩扮家家酒，習慣『照顧感受、維持關係』的連網型說話。這都是練出來的技能。既然是後天學的，男生也能學會同理，女生也能堅定劃清界線。」
+          <strong>【林博閎提示】</strong>「蔡老師、各位同學好，我是博閎。很多人常拿《男人來自火星，女人來自金星》來解釋男女吵架，說『男生天生理性、女生天生感性，本來就講不通』。但學者 Julia Wood 與現代腦科學告訴我們：大腦有很強的可塑性，同一個性別內部的個人差異，其實比男女平均差大得多。講話方式大多是小時候玩遊戲被教出來的：男生玩比勝負的遊戲，學會講究輸贏的報告型說話；女生店家家酒，學會照顧感受的關係型說話。這都是後天技能。追求雙性化溝通，就是既能溫暖傾聽、又能堅定表達，任何人都可以練習。」
         </div>
       </details>
     </div>
@@ -1163,36 +1098,38 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 5: 辱罵語的性別階序 ==================== -->
 <section class="presentation-slide testimonials" id="slide-5" data-chapter="pin" data-shape="waveform">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 05 / 12</span>
-        <span class="badge-topic">Ch3 Q2 (上) ｜ 語言辱罵階序</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">05</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">CH3 Q2 (上) ｜ 語言辱罵階序剖析</span>
       </div>
       <h2 class="slide-title">辱罵語的性別階序：為什麼髒話總在「問候」女性？</h2>
-      <p class="slide-subtitle">日常髒話很少問候爸爸，幾乎都在罵女性器官與母親。這不是巧合，背後是一整套男尊女卑與財產從屬的權力順序。</p>
+      <p class="slide-subtitle">解構日常髒話背後對女性身體器官的污名，以及傳統父權交換體系中的財產附庸性</p>
 
       <div class="editorial-stepper-row">
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num">[01]</span>
-            <span class="step-tag">身體器官污名化</span>
+          <div class="col-lead">
+            <span class="col-num">01</span>
+            <span class="col-tag">身體器官污名化</span>
           </div>
-          <h3 class="step-title">生殖詞彙的雙重標準</h3>
+          <h3 class="col-title">器官符號的非對稱降格</h3>
           <ul class="editorial-list">
             <li><strong>精準鎖定：</strong>日常辱罵用詞絕大多數直接指向女性生殖器官與性徵。</li>
-            <li><strong>雙重標準：</strong>誇獎男性時用「很屌、有種」，侮辱別人時卻全拿女性器官與親屬當武器。</li>
-            <li><strong>降格為羞辱工具：</strong>把女性身體特徵等同於骯髒、下流、可隨意踐踏的字眼。</li>
-            <li><strong>語言物化：</strong>把特定性別的尊嚴直接當成排泄與發洩對象。</li>
+            <li><strong>降格為羞辱工具：</strong>將女性身體特徵等同於骯髒、下流、可隨意踐踏的字眼。</li>
+            <li><strong>雙標象徵：</strong>男性生殖詞彙常被挪用為強大象徵（如「很屌」），女性詞彙則為侮辱。</li>
+            <li><strong>語言物化：</strong>透過語言攻擊，將特定性別的尊嚴降格為排泄與發洩對象。</li>
           </ul>
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-forest);">[02]</span>
-            <span class="step-tag">父權交換體系</span>
+          <div class="col-lead">
+            <span class="col-num forest">02</span>
+            <span class="col-tag">父權交換體系</span>
           </div>
-          <h3 class="step-title">歷史財產附庸性</h3>
+          <h3 class="col-title">歷史財產附庸性</h3>
           <ul class="editorial-list">
             <li><strong>名譽綁定：</strong>傳統父系宗族體系曾將女性視為屬於男性的從屬與家族名譽。</li>
             <li><strong>羞辱母姊的本質：</strong>宣稱玷污對方的母親或姐妹，藉以重擊該男性的陽剛自尊。</li>
@@ -1202,14 +1139,14 @@ const slidesHtml = `
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-slate);">[03]</span>
-            <span class="step-tag">習慣性遮蔽</span>
+          <div class="col-lead">
+            <span class="col-num slate">03</span>
+            <span class="col-tag">習慣性遮蔽</span>
           </div>
-          <h3 class="step-title">隱形暴力的日常化</h3>
+          <h3 class="col-title">隱形暴力的日常化</h3>
           <ul class="editorial-list">
-            <li><strong>口頭禪脫罪：</strong>很多人會辯解「只是習慣發洩、沒有那個意思」來合理化脫口而出。</li>
-            <li><strong>權力秩序複製：</strong>每一次無意識的使用，其實都在幫這套男尊女卑的說話環境背書。</li>
+            <li><strong>口頭禪脫罪：</strong>說話者常以「只是習慣發洩、沒有惡意」來合理化脫口而出。</li>
+            <li><strong>權力秩序複製：</strong>每一次無意識的使用，都在反覆強化男尊女卑的語言環境。</li>
             <li><strong>同儕認同測試：</strong>在部分男性圈子裡，講粗口甚至成了證明男子氣概的通行證。</li>
             <li><strong>批判性覺察：</strong>停止把壓迫性詞彙當成理所當然的日常背景音。</li>
           </ul>
@@ -1218,7 +1155,7 @@ const slidesHtml = `
 
       <div class="monument-statement">
         <div class="monument-quote" style="font-size: clamp(1.1rem, 1.6vw, 1.35rem); font-family: var(--font-ui); font-weight: 600;">
-          髒話很少問候對方的父親，絕大多數都在罵女性器官與母親。在傳統父權邏輯裡，女性曾被當作男性的從屬與家族名譽——想要重擊一個男人的尊嚴，最快的方法就是公開踐踏屬於他的女性親屬。
+          日常髒話大多在罵女性器官和媽媽，不是巧合。在傳統宗族體系裡，攻擊一個男人的女性親屬，本來就是最快打擊他尊言的方式。
         </div>
         <div class="monument-author">從表層洩憤到深層權力階序</div>
       </div>
@@ -1226,7 +1163,7 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【陳品昊提示】</strong>「接下來由我陳品昊報告。大家有沒有想過：為什麼我們聽到的三字經、五字經，幾乎都在問候別人的媽媽或女性生殖器，很少聽到有人問候爸爸？社會學分析指出：在過去宗族社會裡，女性曾被視為男人的附屬品和家族名譽；當一個男人要徹底羞辱另一個男人，最快的方式就是羞辱對方的母親或姊妹。當我們平時把這些話當作口頭禪時，我們其實是在無意識地替這套歧視結構背書。」
+          <strong>【林博閎提示】</strong>「接下來我們看日常口頭禪。大家有沒有想過：為什麼我們聽到的三字經、五字經，幾乎都在問候別人的媽媽或女性生殖器，很少聽到有人問候爸爸？社會學分析指出：在過去宗族社會裡，女性曾被視為男人的附屬品和家族名譽；當一個男人要徹底羞辱另一個男人，最快的方式就是羞辱對方的母親或姊妹。當我們平時把這些話當作口頭禪時，我們其實是在無意識地替這套歧視結構背書。下一段網路文化與概念正名，交給亨澤繼續說明。」
         </div>
       </details>
     </div>
@@ -1235,32 +1172,34 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 6: 數位性別暴力 ==================== -->
 <section class="presentation-slide faq" id="slide-6" data-chapter="pin" data-shape="freeFlow">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 06 / 12</span>
-        <span class="badge-topic">Ch3 Q2 (下) ｜ 數位性別暴力</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">06</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">CH3 Q2 (下) ｜ 數位性別暴力與網路文化</span>
       </div>
       <h2 class="slide-title">數位性別暴力：網路流行語只是「開玩笑」？</h2>
-      <p class="slide-subtitle">在推文底下大家常說「嘴砲而已認真什麼」，但雙重標準與網路圍攻，正在讓許多女性被迫在公共看板上安靜。</p>
+      <p class="slide-subtitle">匿名看板上的標籤化獵巫、雙重標準，以及被嚴重忽視的真實寒蟬效應</p>
 
       <div class="tension-split-row">
         <div class="tension-column">
           <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-terracotta); letter-spacing: 0.08em; margin-bottom: 8px;">
-            [標籤化現象：論壇常見詞彙]
+            標籤化現象 ｜ 論壇常見流行語
           </div>
           <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px;">
-            <div style="border-left: 2px solid var(--color-accent-terracotta); padding-left: 12px;">
-              <div style="font-weight: 800; font-size: 1.1rem; color: var(--color-ink);">「台女」</div>
-              <div style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.5;">從客觀地域稱謂，變質為眼高手低、拜金自私的貶抑標籤。</div>
+            <div style="border-left: 2.5px solid var(--color-accent-terracotta); padding-left: 14px;">
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: 1.15rem; color: var(--color-ink);">「台女」</div>
+              <div style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.55;">從客觀地域稱謂，變質為眼高手低、拜金自私的貶抑標籤。</div>
             </div>
-            <div style="border-left: 2px solid var(--color-ink); padding-left: 12px;">
-              <div style="font-weight: 800; font-size: 1.1rem; color: var(--color-ink);">「母豬、女拳、三寶、綠茶婊」</div>
-              <div style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.5;">人為劃分好女人與劣等女人，將個別負面事件無限上綱為全體性別原罪。</div>
+            <div style="border-left: 2.5px solid var(--color-ink); padding-left: 14px;">
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: 1.15rem; color: var(--color-ink);">「母豬、女拳、三寶、綠茶婊」</div>
+              <div style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.55;">人為劃分好女人與劣等女人，將個別負面事件無限上綱為全體性別原罪。</div>
             </div>
-            <div style="border-left: 2px solid var(--color-accent-forest); padding-left: 12px;">
-              <div style="font-weight: 800; font-size: 1.1rem; color: var(--color-ink);">「ㄈㄈ尺（CCr）」</div>
-              <div style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.5;">跨文化交往中的性別雙標，極度貶抑女性與外籍人士交往為崇洋賣台。</div>
+            <div style="border-left: 2.5px solid var(--color-accent-forest); padding-left: 14px;">
+              <div style="font-family: var(--font-heading); font-weight: 800; font-size: 1.15rem; color: var(--color-ink);">「ㄈㄈ尺 (CCr)」</div>
+              <div style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.55;">跨文化交往中的性別雙標，極度貶抑女性與外籍人士交往為崇洋賣台。</div>
             </div>
           </div>
         </div>
@@ -1268,21 +1207,21 @@ const slidesHtml = `
         <div class="tension-column tension-column-bordered">
           <div style="border-bottom: 1px solid var(--color-hairline); padding-bottom: 16px; margin-bottom: 16px;">
             <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-ink); letter-spacing: 0.08em; margin-bottom: 6px;">
-              [赤裸的性別雙標]
+              赤裸的性別雙標
             </div>
             <ul class="editorial-list" style="gap: 8px;">
-              <li><strong>經濟追求：</strong>男生談薪水被誇「務實上進」；女生在乎經濟條件就被酸「拜金吸血、台女」。</li>
-              <li><strong>情慾探索：</strong>男生情史豐富被捧為「情聖、勝利組」；女生大方聊性就被羞辱為「破麻、公車」。</li>
+              <li><strong>經濟追求：</strong>男在乎薪水被讚「務實上進」；女在乎經濟被酸「拜金吸血」。</li>
+              <li><strong>情慾探索：</strong>男情史豐富被封「勝利組情聖」；女大方談性被罵「破麻公車」。</li>
               <li><strong>同儕激化：</strong>在推文集體嘲弄弱勢，藉由抱團取暖建構優越感。</li>
             </ul>
           </div>
 
           <div>
             <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-terracotta); letter-spacing: 0.08em; margin-bottom: 6px;">
-              [實質傷害] 數位寒蟬效應（Chilling Effect）
+              實質傷害 ｜ 數位寒蟬效應 (Chilling Effect)
             </div>
             <p style="font-size: 0.94rem; line-height: 1.62; color: var(--color-ink); font-weight: 500; margin: 0;">
-              在 PTT、Dcard 上，只要女性發言逆風，隨之而來的就是人身攻擊、人肉搜索甚至騷擾私訊。許多人受不了選擇刪文、隱藏性別或退出看板。這不只是螢幕上的嘴砲，這是在用集體霸凌把特定群體實質趕出公共討論空間。
+              女性在論壇表達觀點極易遭人肉搜索與性羞辱，被迫選擇噤聲或隱藏性別。這種網路狂歡不是單純嘴砲，而是正在實質剝奪特定群體在公共論壇的發言權。
             </p>
           </div>
         </div>
@@ -1291,7 +1230,7 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【陳品昊提示】</strong>「換到網路論壇，這類攻擊換了包裝，變成『台女、母豬、女拳、三寶』這些流行詞。大家在推文底下一人一句，常覺得『只是嘴砲好玩』。但標準往往很不一樣：男生在乎薪水被誇上進，女生在乎條件就變拜金。更嚴重的是，很多女生看到這些留言，會直接選擇不發文、不留言，甚至隱藏性別或退出看板。這不是開玩笑，這是在讓特定的聲音慢慢在公共討論裡消失。」
+          <strong>【林亨澤提示】</strong>「蔡老師、各位同學好，我是亨澤。換到網路論壇，這類語言攻擊換了包裝，變成『台女、母豬、女拳、三寶』這些流行詞。大家在推文底下一人一句，常覺得『只是嘴砲好玩』。但標準往往很不一樣：男生在乎薪水被誇上進，女生在乎條件就變拜金。更嚴重的是，很多女生看到這些留言，會直接選擇不發文、不留言，甚至隱藏性別或退出看板。這不是開玩笑，這是在讓特定的聲音慢慢在公共討論裡消失。」
         </div>
       </details>
     </div>
@@ -1300,14 +1239,16 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 7: 命名即權力 ==================== -->
 <section class="presentation-slide services" id="slide-7" data-chapter="pin" data-shape="ripples">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 07 / 12</span>
-        <span class="badge-topic">Ch3 Q3 (上) ｜ 概念賦權</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">07</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">CH3 Q3 (上) ｜ 概念賦權與正名歷史</span>
       </div>
       <h2 class="slide-title">命名即權力：從「吃豆腐」到「性騷擾」</h2>
-      <p class="slide-subtitle">傷害如果沒有名字，受害者只能自己懷疑自己。有了法律正式名稱，界線與責任才算真正確立。</p>
+      <p class="slide-subtitle">擁有命名的權力，才能讓隱蔽的受害經驗重見天日；正名歷史就是受害者的平權爭取史</p>
 
       <div class="contrast-grid">
         <div class="contrast-side">
@@ -1323,7 +1264,7 @@ const slidesHtml = `
 
         <div class="contrast-side">
           <div class="contrast-badge" style="color: var(--color-accent-forest);">現代法制概念（法律與權力界定）</div>
-          <div class="contrast-term" style="color: var(--color-accent-forest);">「性騷擾（Sexual Harassment）」</div>
+          <div class="contrast-term" style="color: var(--color-accent-forest);">「性騷擾 (Sexual Harassment)」</div>
           <ul class="editorial-list" style="gap: 12px;">
             <li><strong>法律定性：</strong>明確界定為違反個人意願、帶有性或性別意涵之侵犯。</li>
             <li><strong>以尊嚴為核心：</strong>確立權力不對等本質，以受害者的主觀感受與尊嚴為判準。</li>
@@ -1335,7 +1276,7 @@ const slidesHtml = `
 
       <div class="monument-statement" style="border-top: none; margin-top: 14px;">
         <div class="monument-quote" style="font-size: clamp(1.1rem, 1.5vw, 1.35rem); font-family: var(--font-ui); font-weight: 600;">
-          如果一個傷害沒有名字，受害者連求救都會懷疑自己太敏感。把「吃豆腐」正式定名為「性騷擾」，就是撕掉「開玩笑」的遮羞布，讓界線與法律責任清清楚楚。
+          一個行為如果沒有精準的名字，受害者就很難向外求助。當「吃豆腐」被正名為「性騷擾」，模糊的玩笑就變成了法律上有責任歸屬的侵權行為。
         </div>
         <div class="monument-author">權力天平對比：擁有命名權，才能確立保護界線</div>
       </div>
@@ -1343,7 +1284,7 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【林展頡提示】</strong>「大家好，我是林展頡。大家請看這一頁的強烈對比：過去長輩如果被鹹豬手摸一把，只能吞忍說『被吃豆腐』，這個詞把侵犯行為包裝成輕佻的玩笑，受害者甚至會被責怪開不起玩笑。直到 1970 年代女性主義者將它正式命名為『性騷擾』，並推動法律制定，受害者才終於有了合法的武器。這就是社會學講的『命名即賦權』——有了名字，才能把傷害看清楚。」
+          <strong>【林亨澤提示】</strong>「大家請看這一頁的強烈對比：過去長輩如果被鹹豬手摸一把，只能吞忍說『被吃豆腐』，這個詞把侵犯行為包裝成輕佻的玩笑，受害者甚至會被責怪開不起玩笑。直到 1970 年代女性主義者將它正式命名為『性騷擾』，並推動法律制定，受害者才終於有了合法的武器。這就是社會學講的『命名即賦權』——有了名字，才能把傷害看清楚。」
         </div>
       </details>
     </div>
@@ -1352,22 +1293,24 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 8: 概念的當代進化 ==================== -->
 <section class="presentation-slide contact" id="slide-8" data-chapter="pin" data-shape="orb">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 08 / 12</span>
-        <span class="badge-topic">Ch3 Q3 (下) ｜ 概念當代進化</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">08</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">CH3 Q3 (下) ｜ 概念當代進化與法制建構</span>
       </div>
       <h2 class="slide-title">概念的當代進化：語言如何推動平權？</h2>
-      <p class="slide-subtitle">把焦點從「檢討被害人」移回「未經同意散布」的侵權犯罪，語言精準，法律保護才能到位。</p>
+      <p class="slide-subtitle">撕下道德污名標籤，直指侵權本質，建立數位與多元性別的法律防護網</p>
 
       <div class="editorial-stepper-row">
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num">[BEFORE]</span>
-            <span class="step-tag">舊名盲點</span>
+          <div class="col-lead">
+            <span class="col-num">01</span>
+            <span class="col-tag">舊名盲點</span>
           </div>
-          <h3 class="step-title">「復仇式色情」之弊</h3>
+          <h3 class="col-title">「復仇式色情」之弊</h3>
           <ul class="editorial-list">
             <li><strong>誤導焦點：</strong>「復仇」兩字過度聚焦加害者動機，彷彿受害者欠了對方什麼。</li>
             <li><strong>檢討被害人：</strong>「色情」字眼暗示受害者私生活不檢點，帶來嚴重道德審判。</li>
@@ -1377,25 +1320,25 @@ const slidesHtml = `
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-forest);">[EVOLUTION]</span>
-            <span class="step-tag">正名價值</span>
+          <div class="col-lead">
+            <span class="col-num forest">02</span>
+            <span class="col-tag">正名價值</span>
           </div>
-          <h3 class="step-title">未經同意散布私密性影像</h3>
+          <h3 class="col-title">未經同意散布私密影像</h3>
           <ul class="editorial-list">
             <li><strong>回歸侵權本質：</strong>核心在於「違反知情同意與隱私自主權」，無關私生活道德。</li>
             <li><strong>撕下色情標籤：</strong>明確宣告非自願私密影像不是娛樂，而是嚴重數位性別暴力。</li>
-            <li><strong>受害者不必再自責：</strong>不是受害者做錯了什麼，是散布者犯了法。</li>
-            <li><strong>法律視角拓寬：</strong>從只管男女的「兩性平等」，進步到保障多元氣質與認同的「性別平等」。</li>
+            <li><strong>受害主體免責：</strong>賦予受害者無道德負擔的求助正當性與司法防護。</li>
+            <li><strong>延伸：</strong>從「兩性平等」走向「性別平等」，全面納入多元性別與氣質保障。</li>
           </ul>
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-slate);">[STATUTE]</span>
-            <span class="step-tag">刑法正面回應</span>
+          <div class="col-lead">
+            <span class="col-num slate">03</span>
+            <span class="col-tag">刑法正面回應</span>
           </div>
-          <h3 class="step-title">台灣刑法實質立法</h3>
+          <h3 class="col-title">台灣刑法實質立法</h3>
           <ul class="editorial-list">
             <li><strong>刑法第 319-3 條：</strong>未經同意散布性影像罪，處三年以下有期徒刑。</li>
             <li><strong>意圖營利加重：</strong>若意圖營利散布，處五年以下有期徒刑。</li>
@@ -1408,7 +1351,7 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【林展頡提示】</strong>「我們再看一個當代最重要的例子：過去媒體報導外流私密照，總愛用『復仇式色情』這種聳動字眼。但這個詞隱含了檢討被害人，好像女生有把柄欠別人一樣。現在法律界與社會正名為『未經同意散布私密性影像』，重點在於『未經同意』！台灣刑法也在第 319-3 條正式入罪。另外，從『兩性』拓展到『性別平等』，也是語言進步推動多元保障的實例。語言越精準，法律才能保護得越周全。」
+          <strong>【林亨澤提示】</strong>「我們再看一個當代最重要的例子：過去媒體報導外流私密照，總愛用『復仇式色情』這種聳動字眼。但這個詞隱含了檢討被害人，好像女生有把柄欠別人一樣。現在法律界與社會正名為『未經同意散布私密性影像』，重點在於『未經同意』！台灣刑法也在第 319-3 條正式入罪。另外，從『兩性』拓展到『性別平等』，也是語言進步推動多元保障的實例。語言越精準，法律才能保護得越周全。接下來把時間交給品昊，為大家剖析男性的幹話文化與主持現場思辨討論。」
         </div>
       </details>
     </div>
@@ -1417,38 +1360,40 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 9: 直男行為學 ==================== -->
 <section class="presentation-slide" id="slide-9" data-chapter="pin" data-shape="clarity">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 09 / 12</span>
-        <span class="badge-topic">Ch3 Q4 ｜ 直男行為學</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">09</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">CH3 Q4 ｜ 直男行為學與情感防衛</span>
       </div>
       <h2 class="slide-title">直男行為學：為什麼男生只講幹話、不聊心事？</h2>
-      <p class="slide-subtitle">男生聚在一起好像只能聊打球、打遊戲、講垃圾話？拆解直男社交背後的「男子氣概包袱」與恐同焦慮。</p>
+      <p class="slide-subtitle">解構直男社交中的任務導向、恐同焦慮，以及男子氣概的情感防衛機制</p>
 
       <div class="editorial-stepper-row">
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num">[I]</span>
-            <span class="step-tag">任務導向</span>
+          <div class="col-lead">
+            <span class="col-num">01</span>
+            <span class="col-tag">任務導向</span>
           </div>
-          <h3 class="step-title">缺乏情感腳本</h3>
+          <h3 class="col-title">缺乏情感腳本</h3>
           <ul class="editorial-list">
             <li><strong>活動圍繞具體事物：</strong>男性社交大多圍繞打球、打遊戲、比拼輸贏。</li>
-            <li><strong>男子氣概包袱：</strong>從小被灌輸「男兒有淚不輕彈」，傾訴脆弱常被同儕視為軟弱。</li>
-            <li><strong>缺乏練習情境：</strong>成長過程中缺少練習坦露情感的語言腳本，習慣壓抑感受。</li>
+            <li><strong>有毒男子氣概制約：</strong>從小被要求「不許示弱、要剛強」，傾訴脆弱常被視為軟弱。</li>
+            <li><strong>詞彙匱乏：</strong>成長過程中缺少練習坦露情感的語言環境，習慣壓抑感受。</li>
             <li><strong>情感孤立：</strong>外表看似團結熱鬧，內心卻缺少可以放心示弱的傾訴管道。</li>
           </ul>
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-forest);">[II]</span>
-            <span class="step-tag">隱形審查</span>
+          <div class="col-lead">
+            <span class="col-num forest">02</span>
+            <span class="col-tag">隱形審查</span>
           </div>
-          <h3 class="step-title">恐同焦慮（Homophobia）</h3>
+          <h3 class="col-title">恐同焦慮 (Homophobia)</h3>
           <ul class="editorial-list">
-            <li><strong>同儕性別審查：</strong>男性之間過度細膩的關懷，容易引起同儕質疑「很娘、很甲」。</li>
+            <li><strong>同儕性別審查：</strong>男性之間過度細膩的關懷，容易引起同儕質疑性傾向。</li>
             <li><strong>防衛性疏離：</strong>害怕被貼上不夠陽剛的標籤，刻意用粗魯語言拉開情感安全距離。</li>
             <li><strong>陽剛證明儀式：</strong>透過聊黃腔、互嗆、爭強好勝，反覆自我證明異性戀身分。</li>
             <li><strong>深層阻隔：</strong>友誼維持在活動層面，難以觸及真實的生命困境與心理脆弱。</li>
@@ -1456,23 +1401,23 @@ const slidesHtml = `
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-slate);">[III]</span>
-            <span class="step-tag">防禦機制</span>
+          <div class="col-lead">
+            <span class="col-num slate">03</span>
+            <span class="col-tag">防禦機制</span>
           </div>
-          <h3 class="step-title">幹話的替代性親密</h3>
+          <h3 class="col-title">幹話的替代性親密</h3>
           <ul class="editorial-list">
-            <li><strong>安全防護罩：</strong>幹話是男生的防彈背心。透過互嗆互酸，在低風險中維持兄弟情誼。</li>
-            <li><strong>包裝真實關心：</strong>明明想問「你最近還好嗎？」，嘴巴講出來卻變成「你怎麼還沒死」。</li>
-            <li><strong>避險代價：</strong>用幹話包裝真心，既能維持交情，又不必承擔展露脆弱被嘲笑的風險。</li>
-            <li><strong>深層反思：</strong>父權體制不只限制女性，也剝奪了男性自由表達脆弱的權利。</li>
+            <li><strong>安全防護罩：</strong>透過打嘴砲、互嗆，在低風險中維持兄弟情誼。</li>
+            <li><strong>包裝真實關心：</strong>用調侃替代真心話（如用「你怎麼還沒死」來代替關心掛念）。</li>
+            <li><strong>避險代價：</strong>既獲得了歸屬感，又不必承擔展露脆弱被嘲笑的風險。</li>
+            <li><strong>解方：</strong>父權體制不只限制女性，也剝奪了男性自由表達脆弱的權利。</li>
           </ul>
         </div>
       </div>
 
       <div class="monument-statement">
         <div class="monument-quote" style="font-size: clamp(1.1rem, 1.6vw, 1.35rem); font-family: var(--font-ui); font-weight: 600;">
-          男生聚在一起狂講幹話，不是真的沒心沒肺；而是在「男生不能哭、不能示弱」的社會期待下，這是他們唯一學會、不會被同儕嘲笑的陪伴方式。
+          直男聚在一起互嘴講幹話，往往是為了在「不能示弱」的男子氣概壓力下，維持一種不被同儕嘲笑的安全連結。
         </div>
         <div class="monument-author">解構有毒男子氣概：給男性一個允許哭泣與坦誠的安全空間</div>
       </div>
@@ -1480,7 +1425,7 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【林展頡提示】</strong>「我們身為男生，真的只會打遊戲、講幹話嗎？很多人問：為什麼男生聚在一起不能好好聊心事？社會學點出關鍵在於『恐同焦慮』與『男子氣概壓力』。在男生圈子裡，認真聊情緒很容易被同儕笑說很娘、很甲；所以大家發明了『幹話互虧』作為替代性親密。表面上很熱絡，其實是在逃避真實的脆弱。父權體制不只壓迫女性，也同樣剝奪了男性示弱與好好表達感受的權利。」
+          <strong>【陳品昊提示】</strong>「大家好，我是陳品昊。我們身為男生，真的只會打遊戲、講幹話嗎？很多人問：為什麼男生聚在一起不能好好聊心事？社會學點出關鍵在於『恐同焦慮』與『男子氣概壓力』。在男生圈子裡，認真聊情緒很容易被同儕笑說很娘、很甲；所以大家發明了『幹話互虧』作為替代性親密。表面上很熱絡，其實是在逃避真實的脆弱。父權體制不只壓迫女性，也同樣剝奪了男性示弱與好好表達感受的權利。」
         </div>
       </details>
     </div>
@@ -1489,22 +1434,24 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 10: 課堂交流與現場思辨 ==================== -->
 <section class="presentation-slide" id="slide-10" data-chapter="pin" data-shape="cymatics">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 10 / 12</span>
-        <span class="badge-topic">課堂交流與現場思辨 ｜ 換你答 Interactive Discussion</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">10</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">課堂交流與現場思辨 ｜ 換你答 Interactive Discussion</span>
       </div>
       <h2 class="slide-title">課堂交流與現場思辨：換你答！</h2>
-      <p class="slide-subtitle">三個貼近日常生活的開放思考題，預留 3–5 分鐘邀請全班同學共同對話</p>
+      <p class="slide-subtitle">三個貼近日常生活的開放思考題，預留 3–5 分鐘邀請蔡孟哲教授與全班同學共同對話</p>
 
       <div class="editorial-stepper-row">
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-terracotta);">QUESTION 01</span>
-            <span class="step-tag">校園現場</span>
+          <div class="col-lead">
+            <span class="col-num">01</span>
+            <span class="col-tag">校園現場</span>
           </div>
-          <h3 class="step-title" style="font-size: 1.22rem; line-height: 1.45;">
+          <h3 class="col-title" style="font-size: 1.22rem; line-height: 1.45;">
             在大學分組或社團幹部中，主動爭取發言與領導的通常是男生還是女生？
           </h3>
           <p style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.6; margin: 0;">
@@ -1513,11 +1460,11 @@ const slidesHtml = `
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-forest);">QUESTION 02</span>
-            <span class="step-tag">婚俗與家庭</span>
+          <div class="col-lead">
+            <span class="col-num forest">02</span>
+            <span class="col-tag">婚俗與家庭</span>
           </div>
-          <h3 class="step-title" style="font-size: 1.22rem; line-height: 1.45;">
+          <h3 class="col-title" style="font-size: 1.22rem; line-height: 1.45;">
             如果未來你（或好友）結婚，會堅持拿掉哪些傳統儀式？
           </h3>
           <p style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.6; margin: 0;">
@@ -1526,29 +1473,29 @@ const slidesHtml = `
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-slate);">QUESTION 03</span>
-            <span class="step-tag">同儕支持</span>
+          <div class="col-lead">
+            <span class="col-num slate">03</span>
+            <span class="col-tag">同儕支持</span>
           </div>
-          <h3 class="step-title" style="font-size: 1.22rem; line-height: 1.45;">
+          <h3 class="col-title" style="font-size: 1.22rem; line-height: 1.45;">
             身邊的男性朋友陷入情緒低潮時，除了「走啦喝一杯」，我們還能怎麼陪伴？
           </h3>
           <p style="font-size: 0.88rem; color: var(--color-ink-muted); line-height: 1.6; margin: 0;">
-            思考方向：如何卸下男子氣概防衛機制，打造一個允許對方放心示弱、說說真心話的非評判環境？
+            思考方向：如何卸下男子氣概防衛機制，打造一個允許對方放心示弱、說真心話的非評判環境？
           </p>
         </div>
       </div>
 
       <div class="monument-statement" style="text-align: center; justify-content: center; align-items: center;">
         <div class="monument-quote" style="font-size: 1.15rem; font-weight: 600;">
-          這三題沒有標準答案，大家這學期在學校、在宿舍一定遇過，換大家分享！
+          歡迎現場舉手分享您的切身經驗，也可以在課堂留言板即時分享想法
         </div>
       </div>
 
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【林展頡提示】</strong>「現在把麥克風交給全班。這三道題沒有標準答案，但都深深刻在我們的生活裡。第一題是校園分組的發言經驗；第二題是大家對未來婚俗的想像；第三題是我們身為朋友，怎麼讓男生也能放心講心事。請大家花三十秒想想看，等等我們開放兩到三位同學分享您的觀察。」
+          <strong>【陳品昊提示】</strong>「現在由我把麥克風交給全班。這三道題沒有標準答案，但都深深刻在我們的生活裡。第一題是校園分組的發言經驗；第二題是大家對未來婚俗的想像；第三題是我們身為朋友，怎麼讓男生也能放心講心事。請大家花三十秒想想看，等等我們開放兩到三位同學分享您的觀察。」
         </div>
       </details>
     </div>
@@ -1557,22 +1504,24 @@ const slidesHtml = `
 
 <!-- ==================== SLIDE 11: 總結——邁向雙性化的平權未來 ==================== -->
 <section class="presentation-slide faq" id="slide-11" data-chapter="pin" data-shape="freeFlow">
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 11 / 12</span>
-        <span class="badge-topic">總結收束 ｜ 邁向雙性化的平權未來</span>
+      <div class="editorial-kicker">
+        <span class="kicker-num">11</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">總結收束 ｜ 邁向雙性化的平權未來</span>
       </div>
       <h2 class="slide-title">總結：邁向雙性化的平權未來</h2>
-      <p class="slide-subtitle">語言從來不是中立的。看清結構對男女雙方的束縛，從每天說話的習慣開始改變。</p>
+      <p class="slide-subtitle">覺察話語隱含的權力，看見體制對所有人的限制，在日常生活中實踐解放</p>
 
       <div class="editorial-stepper-row">
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-terracotta);">PILLAR 01</span>
-            <span class="step-tag">日常自覺</span>
+          <div class="col-lead">
+            <span class="col-num">01</span>
+            <span class="col-tag">日常自覺</span>
           </div>
-          <h3 class="step-title">覺察話語習慣</h3>
+          <h3 class="col-title">覺察話語習慣</h3>
           <ul class="editorial-list">
             <li><strong>語言非中立：</strong>隨時反思脫口而出的口頭禪與網路流行語背後隱含的權力架構。</li>
             <li><strong>停止日常遮蔽：</strong>不再以「只是開玩笑」替性別辱罵與刻板標籤脫罪。</li>
@@ -1581,11 +1530,11 @@ const slidesHtml = `
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-forest);">PILLAR 02</span>
-            <span class="step-tag">超越對立</span>
+          <div class="col-lead">
+            <span class="col-num forest">02</span>
+            <span class="col-tag">超越對立</span>
           </div>
-          <h3 class="step-title">看見結構性束縛</h3>
+          <h3 class="col-title">看見結構性束縛</h3>
           <ul class="editorial-list">
             <li><strong>跳脫二元思維：</strong>不把性別議題簡化為男女個人對立，看見結構對所有人的傷害。</li>
             <li><strong>看見雙向限制：</strong>女性承受了身體物化與數位寒蟬；男性則背負著壓抑脆弱的包袱。</li>
@@ -1594,11 +1543,11 @@ const slidesHtml = `
         </div>
 
         <div class="editorial-step-col">
-          <div class="step-header">
-            <span class="step-num" style="color: var(--color-accent-slate);">PILLAR 03</span>
-            <span class="step-tag">生活實踐</span>
+          <div class="col-lead">
+            <span class="col-num slate">03</span>
+            <span class="col-tag">生活實踐</span>
           </div>
-          <h3 class="step-title">實踐雙性化溝通</h3>
+          <h3 class="col-title">實踐雙性化溝通</h3>
           <ul class="editorial-list">
             <li><strong>靈活轉換風格：</strong>男性可以坦率溫柔示弱，女性可以果斷捍衛個人界線。</li>
             <li><strong>打造安全空間：</strong>在同儕之間建立允許分享真實感受、互相承接的信任關係。</li>
@@ -1609,14 +1558,14 @@ const slidesHtml = `
 
       <div class="monument-statement">
         <div class="monument-quote" style="font-size: 1.18rem; font-family: var(--font-ui); font-weight: 600;">
-          話語不是工具，話語本身就是權力。退回那些習慣成自然的歧視髒話、在朋友想哭時別急著叫他「喝一杯就好」，我們平常怎麼跟身邊的人說話，決定了我們活在什麼樣的社會。
+          改變社會不需要驚天動地的大口號：當我們在日常對話中停下來多想一秒，願意用尊重的詞彙說話，我們就已經在鬆動舊有的權力框架。
         </div>
       </div>
 
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【廖峻毅提示】</strong>「今天報告的最後，我們想說的是：語言不是客觀中立的。女生在網路上被貼標籤、罵髒話時承受的寒蟬效應，跟男生在現實裡被壓抑、只能靠講幹話防衛的情感孤立，其實都是同一套父權框架造成的傷害。破除刻板印象，不是要男女互相對立指責，而是讓我們都能卸下防衛：想說真話的時候能勇敢劃清界線，想示弱的時候能被溫柔接住。謝謝大家。」
+          <strong>【陳品昊提示】</strong>「最後為大家總結我們第 3 組今天的報告核心：話語就是權力。第一，隨時覺察自己脫口而出的詞彙；第二，跳脫男女對立，看見父權體制對所有人的限制——女性受到身體物化和寒蟬效應，男性則被剝奪了哭泣和示弱的自由；第三，練習雙性化溝通，該堅定時把界線劃清楚，該同理時好好聽對方說話。平權不是口號，就從我們平時怎麼跟身邊的人講話開始。」
         </div>
       </details>
     </div>
@@ -1624,23 +1573,30 @@ const slidesHtml = `
 </section>
 
 <!-- ==================== SLIDE 12: 參考文獻與致謝 ==================== -->
-<section class="presentation-slide faq" id="slide-12" data-chapter="pin" data-shape="ripples" data-flow>
+<section class="presentation-slide faq" id="slide-12" data-chapter="pin" data-shape="ripples" data-video="./assets/nailong-pingpong-720p.mp4?v=20261005_2" data-flow>
+  <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div class="slide-eyebrow">
-        <span class="badge-index">SLIDE 12 / 12</span>
-        <span class="badge-topic">專案總結 ｜ 參考文獻與致謝</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <div class="editorial-kicker" style="margin-bottom: 0;">
+          <span class="kicker-num">12</span>
+          <span class="kicker-slash">/</span>
+          <span class="kicker-label">專案總結 ｜ 參考文獻與致謝</span>
+        </div>
+        <button id="slide12-toggle-view" class="caps-small-bold" style="cursor: pointer; background: rgba(42,95,69,0.09); border: 1px solid rgba(42,95,69,0.22); color: var(--color-accent-forest); border-radius: 99px; padding: 4px 14px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
+          ✨ 全像視角 (查看純淨 3D 奶龍動畫)
+        </button>
       </div>
       <h2 class="slide-title">參考文獻與報告致謝</h2>
-      <p class="slide-subtitle">感謝 陳竹上 教授 悉心指導 ｜ 第 3 組全體 10 位組員敬上</p>
+      <p class="slide-subtitle">感謝 蔡孟哲 教授 悉心指導 ｜ 第 3 組全體 10 位組員敬上</p>
 
       <div class="tension-split-row">
         <div class="tension-column">
           <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-terracotta); letter-spacing: 0.08em; margin-bottom: 8px;">
-            [學術文獻與司法裁判依據]
+            學術文獻與司法裁判依據
           </div>
           <ul class="editorial-list" style="font-size: 0.88rem; gap: 8px;">
-            <li>陳竹上教授等（2023）。《臺灣性別100+問》（Ch1 黃長玲、李佩雯；Ch2 姜貞吟；Ch3 李佩雯）。巨流圖書公司。</li>
+            <li>蔡孟哲教授等（2023）。《臺灣性別100+問》（Ch1 黃長玲、李佩雯；Ch2 姜貞吟；Ch3 李佩雯）。巨流圖書公司。</li>
             <li>Allan G. Johnson（2008）。《見樹又見林：社會學作為一種生活、實踐與承諾》。成令方等譯。群學。</li>
             <li>Julia T. Wood（2011）。《性別化的人生：傳播、性別與文化》。五南。</li>
             <li>司法院憲法法庭 111 年憲判字第 4 號判決（原住民身分與姓氏規範案）。</li>
@@ -1650,11 +1606,12 @@ const slidesHtml = `
 
         <div class="tension-column tension-column-bordered">
           <div style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-forest); letter-spacing: 0.08em; margin-bottom: 8px;">
-            [報告團隊 10 位組員全名]
+            報告團隊 10 位組員全名
           </div>
           <div style="font-size: 0.94rem; line-height: 1.7; color: var(--color-ink);">
-            <strong>口頭主講代表：</strong>廖峻毅 ｜ 陳品昊 ｜ 林展頡<br>
-            <strong>專案研究統整：</strong>李昕澤 ｜ 江沂絃 ｜ 林季頻 ｜ 林博閎 ｜ 林亨澤 ｜ 郭泓佑 ｜ 鄭傑尹
+            <strong>口頭主講代表：</strong>郭泓佑 ｜ 林博閎 ｜ 林亨澤 ｜ 陳品昊<br>
+            <strong>報告簡報製作：</strong>林季頫<br>
+            <strong>專案研究統整：</strong>廖峻毅 ｜ 李昕澤 ｜ 江沂絃 ｜ 林展頡 ｜ 鄭傑尹
           </div>
 
           <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--color-hairline); display: flex; justify-content: space-between; align-items: baseline;">
@@ -1662,7 +1619,7 @@ const slidesHtml = `
               <div style="font-size: 1.05rem; font-weight: 800; color: var(--color-ink);">國立高雄師範大學 通識教育中心</div>
               <div style="font-size: 0.82rem; color: var(--color-ink-muted); margin-top: 2px;">《性別與文化》專案報告完畢</div>
             </div>
-            <span class="badge-index" style="background: rgba(42,95,69,0.08); color: var(--color-accent-forest); border: none;">
+            <span style="font-family: var(--font-mono); font-size: 0.78rem; font-weight: 700; color: var(--color-accent-forest); background: rgba(42,95,69,0.08); padding: 4px 12px; border-radius: 99px;">
               Q & A 提問交流
             </span>
           </div>
@@ -1672,13 +1629,19 @@ const slidesHtml = `
       <details class="speaker-notes-drawer">
         <summary class="notes-summary">🎙️ 講者口語逐字提示 (Speaker Notes)</summary>
         <div class="notes-body" data-speaker-note="true">
-          <strong>【全組致謝】</strong>「非常感謝陳竹上教授的指導與全體同學的聆聽。我們第 3 組全體 10 位組員的報告到這裡告一段落。接下來開放現場 Q&A 提問與老師講評指導，謝謝大家！」
+          <strong>【全組致謝（由陳品昊結尾）】</strong>「非常感謝蔡孟哲教授的指導與全體同學的聆聽。我們第 3 組全體 10 位組員的報告到這裡告一段落。接下來開放現場 Q&A 提問與老師講評指導，謝謝大家！」
         </div>
       </details>
     </div>
   </div>
+  <div class="immersed-hint" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(28,25,23,0.85);color:#fff;padding:8px 20px;border-radius:99px;font-size:0.82rem;backdrop-filter:blur(8px);cursor:pointer;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.18);">
+    ✨ 點擊任意處或按 ESC 恢復致謝資訊
+  </div>
 </section>
 `;
+
+// 2.5 Clean Preloader Script if preloader element is absent
+html = html.replace(/<script type="module" src="\.\/_astro\/Preloader\.astro_astro_type_script_index_0_lang\.[^"]+"><\/script>/g, '');
 
 // 3. Replace <main> Content
 const mainRegex = /<main[^>]*id="main"[^>]*>[\s\S]*?<\/main>/;
@@ -1686,8 +1649,7 @@ const match = html.match(mainRegex);
 if (match) {
   const openTagMatch = match[0].match(/<main[^>]*id="main"[^>]*>/);
   const openTag = openTagMatch ? openTagMatch[0] : '<main id="main">';
-  const sectionsBuilderScript = '<script type="module" src="./_astro/SectionsBuilder.astro_astro_type_script_index_0_lang.bRAIUHcx.js"></script>';
-  const newMainContent = `${openTag}\n${slidesHtml}\n${sectionsBuilderScript}\n</main>`;
+  const newMainContent = `${openTag}\n${slidesHtml}\n</main>`;
   html = html.replace(mainRegex, newMainContent);
   console.log('Successfully replaced <main> sections with 12 editorial slides');
 } else {
@@ -1702,20 +1664,12 @@ const newHeaderChapters = `
 html = html.replace(/<div class="chapters" style="--chapter-count: \d+"[\s\S]*?<\/div>/, newHeaderChapters.trim());
 
 // Clean header utility links
-const newHeaderPages = `
-<ul class="pages caps-med-bold" data-astro-cid-ywwchgwn style="display:flex;align-items:center;gap:6px;">
-  <li data-astro-cid-ywwchgwn><button id="btn-prompter-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：N">🎙️ 講稿提示</button></li>
-  <li data-astro-cid-ywwchgwn><button id="btn-cinema-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：C">🎬 電影模式</button></li>
-  <li data-astro-cid-ywwchgwn><button id="btn-particle-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：P">✨ 粒子形態</button></li>
-  <li data-astro-cid-ywwchgwn><button id="btn-video-toggle" class="dock-btn" style="background:var(--color-ink-faint);padding:6px 12px;border-radius:99px;font-size:0.78rem;border:1px solid var(--color-hairline);" title="快捷鍵：V">🎥 電影影片</button></li>
-</ul>
-`;
-html = html.replace(/<ul class="pages caps-med-bold" data-astro-cid-ywwchgwn>[\s\S]*?<\/ul>/, newHeaderPages.trim());
+html = html.replace(/<ul class="pages caps-med-bold"[^>]*>[\s\S]*?<\/ul>/, '');
 
 // 5. Update Header Logo
 const oldLogoMatch = html.match(/<a href="[^"]*" class="logo is-header svelte-ciedsx"[\s\S]*?<\/a>/);
 if (oldLogoMatch) {
-  const newLogo = `<a href="#slide-1" class="logo is-header svelte-ciedsx" data-astro-cid-ywwchgwn="true" style="text-decoration:none;"><span style="font-family:var(--font-heading);font-weight:800;font-size:1.15rem;letter-spacing:0.02em;color:var(--color-ink);">話語即權力</span><span style="font-size:0.75rem;color:var(--color-ink-muted);margin-left:8px;font-weight:600;">第 3 組 ｜ 性別與文化</span></a>`;
+  const newLogo = `<a href="#slide-1" class="logo is-header svelte-ciedsx" data-astro-cid-ywwchgwn="true" style="text-decoration:none;"><span style="font-family:var(--font-heading);font-weight:800;font-size:1.15rem;letter-spacing:0.02em;color:var(--color-ink);">話語即權力</span><span style="font-size:0.75rem;color:var(--color-ink-muted);margin-left:8px;font-weight:600;">第 3 組 ｜ 蔡孟哲 教授 指導</span></a>`;
   html = html.replace(oldLogoMatch[0], newLogo);
 }
 
@@ -1728,35 +1682,6 @@ if (scriptPos !== -1) {
 
 // 7. Inject Presenter Controls, Prompter, and Footer
 const presenterScript = `
-<!-- Cinematic Widescreen Letterbox Bars -->
-<div class="cinematic-letterbox top" aria-hidden="true"></div>
-<div class="cinematic-letterbox bottom" aria-hidden="true"></div>
-
-<!-- Thematic Video & Multi-Layer Particle Backdrop -->
-<div id="cinematic-backdrop-container" aria-hidden="true">
-  <video id="thematic-video" playsinline loop muted autoplay preload="auto">
-    <source src="https://assets.mixkit.co/videos/preview/mixkit-slow-motion-of-water-splashing-in-a-dark-room-42861-large.mp4" type="video/mp4">
-  </video>
-  <canvas id="procedural-film-canvas"></canvas>
-  <canvas id="cinematic-particles-canvas"></canvas>
-  <div class="film-grain-overlay"></div>
-</div>
-
-<!-- Cinematic HUD -->
-<div class="cinematic-hud" id="cinematic-hud" aria-hidden="true">
-  <div class="hud-left">
-    <span class="hud-rec-dot"></span>
-    <span style="font-weight:800;color:#E11D48;">REC [LIVE]</span>
-    <span id="hud-timecode" style="color:#F7F4F0;">00:04:18:24</span>
-    <span class="hud-tag">4K 2.39:1</span>
-    <span class="hud-tag hud-tag-accent" id="hud-morph-name">形態 1/4：剛性拘束網絡</span>
-  </div>
-  <div class="hud-right">
-    <span class="hud-tag" id="hud-slide-title">CH 01 封面導讀</span>
-    <span class="hud-tag" style="opacity:0.8;">35MM TONE • 24 FPS</span>
-  </div>
-</div>
-
 <!-- Floating Prompter Modal -->
 <div class="prompter-modal" id="prompter-modal" role="dialog" aria-label="講者提示視窗">
   <div class="prompter-header">
@@ -1768,20 +1693,16 @@ const presenterScript = `
   </div>
 </div>
 
-<!-- Bottom Navigation Dock -->
+<!-- Clean Bottom Navigation Dock -->
 <nav class="slide-dock" id="slide-dock" aria-label="Presentation controls">
   <button class="dock-btn" id="dock-prev-btn" aria-label="上一頁">▲ 前一頁</button>
   <span class="dock-counter" id="dock-counter">01 / 12</span>
   <button class="dock-btn" id="dock-next-btn" aria-label="下一頁">▼ 下一頁</button>
-  <span class="particle-morph-badge" id="dock-morph-tag" title="點擊切換粒子形態（快捷鍵 P）">✨ 剛性網絡</span>
-  <button class="dock-btn" id="dock-notes-toggle" style="margin-left:4px;border-left:1px solid var(--color-hairline);padding-left:10px;" title="快捷鍵 N">🎙️ 講稿</button>
-  <button class="dock-btn" id="dock-cinema-toggle" title="快捷鍵 C">🎬 電影</button>
-  <button class="dock-btn" id="dock-video-toggle" title="快捷鍵 V">🎥 影片</button>
 </nav>
 
 <!-- Clean Footer Bar -->
 <div class="presentation-footer-bar">
-  <span>高師大通識教育《性別與文化》 ｜ 第 3 組全體 10 位組員 ｜ 導讀《臺灣性別100+問》</span>
+  <span>高師大通識教育《性別與文化》 ｜ 第 3 組全體 10 位組員 ｜ 指導教授：蔡孟哲 教授</span>
 </div>
 
 <script>
@@ -1793,69 +1714,96 @@ const presenterScript = `
     const counter = document.getElementById('dock-counter');
     const prevBtn = document.getElementById('dock-prev-btn');
     const nextBtn = document.getElementById('dock-next-btn');
-    const notesToggle = document.getElementById('dock-notes-toggle');
-    const headerPrompterBtn = document.getElementById('btn-prompter-toggle');
     const prompterModal = document.getElementById('prompter-modal');
     const prompterClose = document.getElementById('prompter-close-btn');
     const prompterContent = document.getElementById('prompter-content');
+    const slide12 = document.getElementById('slide-12');
 
-    const headerCinemaBtn = document.getElementById('btn-cinema-toggle');
-    const dockCinemaBtn = document.getElementById('dock-cinema-toggle');
-    const headerParticleBtn = document.getElementById('btn-particle-toggle');
-    const dockMorphTag = document.getElementById('dock-morph-tag');
-    const headerVideoBtn = document.getElementById('btn-video-toggle');
-    const dockVideoBtn = document.getElementById('dock-video-toggle');
+    let currentIdx = 0;
+    let isNavigating = false;
+    let navTimer = null;
+    window.__presentationControlsVideo = true;
 
-    const hudTimecode = document.getElementById('hud-timecode');
-    const hudMorphName = document.getElementById('hud-morph-name');
-    const hudSlideTitle = document.getElementById('hud-slide-title');
-    const thematicVideo = document.getElementById('thematic-video');
+    // Attach videos directly to the DOM to ensure high-priority GPU video decoding pipeline in Chromium
+    const videoHost = document.createElement('div');
+    videoHost.id = 'presentation-videos-host';
+    videoHost.setAttribute('aria-hidden', 'true');
+    videoHost.style.cssText = 'position:fixed;bottom:0;right:0;width:160px;height:90px;opacity:0.01;pointer-events:none;z-index:0;overflow:hidden;';
 
-    // 1. Current Slide & State Management
-    function getCurrentSlideIndex() {
-      const activeIdx = slides.findIndex(s => s.hasAttribute('data-active'));
-      if (activeIdx !== -1) return activeIdx;
-      const scrollMid = window.scrollY + window.innerHeight / 2;
-      for (let i = slides.length - 1; i >= 0; i--) {
-        const rect = slides[i].getBoundingClientRect();
-        if (rect.top + window.scrollY <= scrollMid) return i;
-      }
-      return 0;
-    }
+    const videoDancers = document.createElement('video');
+    videoDancers.src = './assets/dancers-pingpong-720p.mp4?v=20261005_2';
+    videoDancers.muted = true;
+    videoDancers.defaultMuted = true;
+    videoDancers.loop = true;
+    videoDancers.playsInline = true;
+    videoDancers.crossOrigin = 'anonymous';
+    videoDancers.preload = 'auto';
+    videoDancers.setAttribute('muted', '');
+    videoDancers.setAttribute('playsinline', '');
 
-    const MORPH_DEFINITIONS = [
-      { id: 0, name: '剛性拘束網絡', short: '✨ 剛性網絡', desc: 'Allan Johnson 父權結構性控制網格', slides: [0, 1, 2] },
-      { id: 1, name: '潑水漣漪與火盆餘燼', short: '💧 潑水餘燼', desc: '婚俗潑水不可回與過火爐改姓抗爭', slides: [3, 4, 5] },
-      { id: 2, name: '數位故障與雜訊風暴', short: '⚡ 數位雜訊', desc: '網路厭女語言與私密影像寒蟬效應', slides: [6, 7, 8] },
-      { id: 3, name: '雙性化柔和星雲', short: '🌌 雙性星雲', desc: '打破二元框架與包容共感之流動', slides: [9, 10, 11] }
-    ];
+    const videoNailong = document.createElement('video');
+    videoNailong.src = './assets/nailong-pingpong-720p.mp4?v=20261005_2';
+    videoNailong.muted = true;
+    videoNailong.defaultMuted = true;
+    videoNailong.loop = true;
+    videoNailong.playsInline = true;
+    videoNailong.crossOrigin = 'anonymous';
+    videoNailong.preload = 'auto';
+    videoNailong.setAttribute('muted', '');
+    videoNailong.setAttribute('playsinline', '');
 
-    let currentMorphState = 0;
-    let isCinemaMode = false;
-    let isVideoMode = false;
+    videoHost.appendChild(videoDancers);
+    videoHost.appendChild(videoNailong);
+    document.body.appendChild(videoHost);
 
-    function getMorphForSlide(slideIdx) {
-      if (slideIdx <= 2) return 0;
-      if (slideIdx <= 5) return 1;
-      if (slideIdx <= 8) return 2;
-      return 3;
-    }
+    videoDancers.addEventListener('ended', () => {
+      videoDancers.currentTime = 0;
+      if (currentIdx === 0) videoDancers.play().catch(() => {});
+    });
+    videoNailong.addEventListener('ended', () => {
+      videoNailong.currentTime = 0;
+      if (currentIdx === 11) videoNailong.play().catch(() => {});
+    });
 
-    function setMorphState(stateIdx, updateParticles = true) {
-      currentMorphState = (stateIdx + 4) % 4;
-      const def = MORPH_DEFINITIONS[currentMorphState];
-      if (dockMorphTag) dockMorphTag.textContent = def.short;
-      if (hudMorphName) hudMorphName.textContent = '形態 ' + (currentMorphState + 1) + '/4：' + def.name;
-      if (updateParticles && window.CinematicParticles) {
-        window.CinematicParticles.setMorphState(currentMorphState);
-      }
-    }
+    videoDancers.addEventListener('canplay', () => {
+      if (currentIdx === 0 && videoDancers.paused) videoDancers.play().catch(() => {});
+    });
+    videoNailong.addEventListener('canplay', () => {
+      if (currentIdx === 11 && videoNailong.paused) videoNailong.play().catch(() => {});
+    });
 
-    function updateCounterAndPrompter() {
-      const idx = getCurrentSlideIndex();
+    videoDancers.load();
+    videoNailong.load();
+    // Only play videoDancers initially on Slide 1; videoNailong plays when Slide 12 is reached
+    videoDancers.play().catch(() => {});
+
+    function updateActiveState(idx) {
+      if (idx < 0 || idx >= slides.length) return;
+      const prevIdx = currentIdx;
+      currentIdx = idx;
+      const direction = idx >= prevIdx ? 1 : -1;
+
       if (counter) {
         counter.textContent = String(idx + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
       }
+
+      document.querySelectorAll('.header .chapters li').forEach((li, i) => {
+        if (i === idx) {
+          li.setAttribute('data-active', '');
+        } else {
+          li.removeAttribute('data-active');
+        }
+      });
+
+      slides.forEach((s, i) => {
+        if (i === idx) {
+          s.setAttribute('data-active', '');
+          s.style.setProperty('--fade', '1');
+        } else {
+          s.removeAttribute('data-active');
+        }
+      });
+
       if (prompterModal && prompterModal.classList.contains('is-open')) {
         const curSlide = slides[idx];
         if (curSlide) {
@@ -1865,30 +1813,121 @@ const presenterScript = `
           }
         }
       }
-      // Update HUD Slide Title
-      if (hudSlideTitle && slides[idx]) {
-        const titleEl = slides[idx].querySelector('.slide-title');
-        const shortTitle = titleEl ? titleEl.textContent.trim().split(/[：\n]/)[0] : ('Slide ' + (idx + 1));
-        hudSlideTitle.textContent = 'CH ' + String(idx + 1).padStart(2, '0') + ' ' + shortTitle.slice(0, 12);
+
+      if (window.webglExperience) {
+        const shapeProgressMap = [0, 1, 2.5, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        const targetProgress = shapeProgressMap[idx] !== undefined ? shapeProgressMap[idx] : idx;
+
+        // 3D 粒子場彈簧物理形狀過渡 (Spring interpolation between 3D particle shapes)
+        window.webglExperience.setProgress(targetProgress);
+
+        if (idx === 0) {
+          // Slide 1 (第一頁): 雙人舞者人體深度影片粒子 (正放完畢即順暢倒放，循環往復)
+          if (!videoNailong.paused) videoNailong.pause();
+          if (videoDancers.paused) videoDancers.play().catch(() => {});
+          if (typeof window.webglExperience.switchVideo === 'function') {
+            window.webglExperience.switchVideo(videoDancers);
+          } else if (window.webglExperience.videoLayer) {
+            window.webglExperience.videoLayer.video = videoDancers;
+            if (window.webglExperience.videoLayer.texture) {
+              window.webglExperience.videoLayer.texture.image = videoDancers;
+              window.webglExperience.videoLayer.texture.needsUpdate = true;
+            }
+          }
+          if (window.webglExperience.videoLayer && typeof window.webglExperience.videoLayer.setLook === 'function') {
+            window.webglExperience.videoLayer.setLook({
+              brightness: 1.05,
+              highlights: 0.50,
+              density: 0.04,
+              scale: 1.08,
+              motion: 1.0
+            });
+          }
+          if (typeof window.webglExperience.setVideoReveal === 'function') {
+            window.webglExperience.setVideoReveal(1.0, direction, false);
+          }
+        } else if (idx === 11) {
+          // Slide 12 (最後一頁): 奶龍 67 影片 (活潑流暢 13s 雙向彈性循環，高解析度清爽全像粒子)
+          if (!videoDancers.paused) videoDancers.pause();
+          if (videoNailong.paused) videoNailong.play().catch(() => {});
+          if (typeof window.webglExperience.switchVideo === 'function') {
+            window.webglExperience.switchVideo(videoNailong);
+          } else if (window.webglExperience.videoLayer) {
+            window.webglExperience.videoLayer.video = videoNailong;
+            if (window.webglExperience.videoLayer.texture) {
+              window.webglExperience.videoLayer.texture.image = videoNailong;
+              window.webglExperience.videoLayer.texture.needsUpdate = true;
+            }
+          }
+          if (window.webglExperience.videoLayer && typeof window.webglExperience.videoLayer.setLook === 'function') {
+            window.webglExperience.videoLayer.setLook({
+              brightness: 1.15,
+              highlights: 0.65,
+              density: -0.01,
+              scale: 0.82,
+              motion: 1.0
+            });
+          }
+          if (typeof window.webglExperience.setVideoReveal === 'function') {
+            window.webglExperience.setVideoReveal(1.0, direction, false);
+          }
+        } else {
+          // Slide 2 ~ 11: 純 3D 粒子場（無影片遮罩），深度影片粒子滑順錯位散逸，水墨渦流融入 3D 星雲
+          if (!videoDancers.paused) videoDancers.pause();
+          if (!videoNailong.paused) videoNailong.pause();
+          if (typeof window.webglExperience.setVideoReveal === 'function') {
+            window.webglExperience.setVideoReveal(0.0, direction, false);
+          }
+        }
       }
-      // Auto-sync particle morph if user hasn't manually overridden recently
-      setMorphState(getMorphForSlide(idx), true);
     }
 
     function goToSlide(targetIdx) {
       if (targetIdx < 0 || targetIdx >= slides.length) return;
-      slides.forEach((s, i) => {
-        if (i === targetIdx) {
-          s.setAttribute('data-active', '');
-          s.style.setProperty('--fade', '1');
-        } else {
-          s.removeAttribute('data-active');
+      isNavigating = true;
+      clearTimeout(navTimer);
+      currentIdx = targetIdx;
+      updateActiveState(targetIdx);
+      slides[targetIdx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      navTimer = setTimeout(() => {
+        isNavigating = false;
+      }, 750);
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (isNavigating) return;
+      let maxRatio = 0;
+      let targetIdx = -1;
+      entries.forEach(entry => {
+        if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+          maxRatio = entry.intersectionRatio;
+          targetIdx = slides.indexOf(entry.target);
         }
       });
-      slides[targetIdx].scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.history.replaceState(null, '', '#slide-' + (targetIdx + 1));
-      setTimeout(updateCounterAndPrompter, 150);
-    }
+      if (targetIdx !== -1 && maxRatio >= 0.45 && targetIdx !== currentIdx) {
+        updateActiveState(targetIdx);
+      }
+    }, {
+      threshold: [0.2, 0.45, 0.7, 0.9]
+    });
+
+    slides.forEach(slide => observer.observe(slide));
+
+    window.addEventListener('scroll', () => {
+      if (isNavigating) return;
+      const scrollY = window.scrollY || window.pageYOffset;
+      const innerH = window.innerHeight;
+      const docH = document.documentElement.scrollHeight;
+      if (scrollY + innerH >= docH - 45) {
+        if (currentIdx !== slides.length - 1) {
+          updateActiveState(slides.length - 1);
+        }
+      } else if (scrollY <= 45) {
+        if (currentIdx !== 0) {
+          updateActiveState(0);
+        }
+      }
+    }, { passive: true });
 
     document.querySelectorAll('.header .chapters a').forEach((a, idx) => {
       a.addEventListener('click', (e) => {
@@ -1898,445 +1937,143 @@ const presenterScript = `
     });
 
     if (window.location.hash) {
-      const match = window.location.hash.match(/slide-(\\d+)/);
+      const match = window.location.hash.match(/slide-(\d+)/);
       if (match) {
         const sIdx = parseInt(match[1], 10) - 1;
         if (sIdx >= 0 && sIdx < slides.length) {
+          currentIdx = sIdx;
           setTimeout(() => goToSlide(sIdx), 80);
         }
       }
+    } else {
+      updateActiveState(0);
     }
 
-    if (prevBtn) prevBtn.addEventListener('click', () => goToSlide(getCurrentSlideIndex() - 1));
-    if (nextBtn) nextBtn.addEventListener('click', () => goToSlide(getCurrentSlideIndex() + 1));
-
-    // 2. Cinema Mode Toggle
-    function toggleCinemaMode() {
-      isCinemaMode = !isCinemaMode;
-      document.body.classList.toggle('cinema-mode', isCinemaMode);
-      if (headerCinemaBtn) headerCinemaBtn.classList.toggle('is-active', isCinemaMode);
-      if (dockCinemaBtn) dockCinemaBtn.classList.toggle('is-active', isCinemaMode);
-    }
-
-    if (headerCinemaBtn) headerCinemaBtn.addEventListener('click', toggleCinemaMode);
-    if (dockCinemaBtn) dockCinemaBtn.addEventListener('click', toggleCinemaMode);
-
-    // 3. Particle Morph Cycle
-    function cycleParticleMorph() {
-      setMorphState(currentMorphState + 1, true);
-    }
-
-    if (headerParticleBtn) headerParticleBtn.addEventListener('click', cycleParticleMorph);
-    if (dockMorphTag) dockMorphTag.addEventListener('click', cycleParticleMorph);
-
-    // 4. Video Backdrop Toggle
-    function toggleVideoMode() {
-      isVideoMode = !isVideoMode;
-      document.body.classList.toggle('video-active', isVideoMode);
-      document.body.classList.toggle('procedural-active', !isVideoMode);
-      if (headerVideoBtn) headerVideoBtn.classList.toggle('is-active', isVideoMode);
-      if (dockVideoBtn) dockVideoBtn.classList.toggle('is-active', isVideoMode);
-      if (thematicVideo) {
-        if (isVideoMode) {
-          thematicVideo.play().catch(() => {});
-        } else {
-          thematicVideo.pause();
+    let hasInitializedFirstReveal = false;
+    function syncWhenReady(attempts = 0) {
+      if (window.webglExperience) {
+        if (!hasInitializedFirstReveal) {
+          hasInitializedFirstReveal = true;
+          if (currentIdx === 0) {
+            if (typeof window.webglExperience.switchVideo === 'function') {
+              window.webglExperience.switchVideo(videoDancers);
+            }
+            if (videoDancers.paused) videoDancers.play().catch(() => {});
+            if (typeof window.webglExperience.setVideoReveal === 'function') {
+              window.webglExperience.setVideoReveal(1.0, 1, true);
+            }
+          } else if (currentIdx === 11) {
+            if (typeof window.webglExperience.switchVideo === 'function') {
+              window.webglExperience.switchVideo(videoNailong);
+            }
+            if (videoNailong.paused) videoNailong.play().catch(() => {});
+            if (typeof window.webglExperience.setVideoReveal === 'function') {
+              window.webglExperience.setVideoReveal(1.0, 1, true);
+            }
+          }
         }
+        updateActiveState(currentIdx);
+      } else if (attempts < 50) {
+        setTimeout(() => syncWhenReady(attempts + 1), 80);
       }
     }
+    syncWhenReady();
 
-    if (headerVideoBtn) headerVideoBtn.addEventListener('click', toggleVideoMode);
-    if (dockVideoBtn) dockVideoBtn.addEventListener('click', toggleVideoMode);
+    const toggleViewBtn = document.getElementById('slide12-toggle-view');
+    const immersedHint = slide12 ? slide12.querySelector('.immersed-hint') : null;
+    if (toggleViewBtn && slide12) {
+      toggleViewBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        slide12.classList.toggle('is-immersed');
+      });
+    }
+    if (immersedHint && slide12) {
+      immersedHint.addEventListener('click', (e) => {
+        e.stopPropagation();
+        slide12.classList.remove('is-immersed');
+      });
+    }
+    if (slide12) {
+      slide12.addEventListener('click', (e) => {
+        if (slide12.classList.contains('is-immersed')) {
+          slide12.classList.remove('is-immersed');
+        }
+      });
+    }
 
-    // Default: start procedural background
-    document.body.classList.add('procedural-active');
+    const resumeOnInteraction = () => {
+      if (currentIdx === 0 && videoDancers && videoDancers.paused) videoDancers.play().catch(() => {});
+      if (currentIdx === 11 && videoNailong && videoNailong.paused) videoNailong.play().catch(() => {});
+    };
+    ['pointerdown', 'click', 'wheel', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+      window.addEventListener(evt, resumeOnInteraction, { passive: true });
+    });
 
-    // 5. Prompter Toggle
+    if (prevBtn) prevBtn.addEventListener('click', () => goToSlide(currentIdx - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => goToSlide(currentIdx + 1));
+
     function togglePrompter() {
       if (!prompterModal) return;
       prompterModal.classList.toggle('is-open');
-      updateCounterAndPrompter();
+      updateActiveState(currentIdx);
     }
 
-    if (notesToggle) notesToggle.addEventListener('click', togglePrompter);
-    if (headerPrompterBtn) headerPrompterBtn.addEventListener('click', togglePrompter);
     if (prompterClose && prompterModal) {
       prompterClose.addEventListener('click', () => {
         prompterModal.classList.remove('is-open');
       });
     }
 
-    window.addEventListener('scroll', updateCounterAndPrompter, { passive: true });
-    updateCounterAndPrompter();
-
-    // 6. Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
       const key = e.key.toLowerCase();
+      if (key === 'escape' && slide12 && slide12.classList.contains('is-immersed')) {
+        slide12.classList.remove('is-immersed');
+        return;
+      }
       if (['arrowdown', 'arrowright', 'pagedown', ' '].includes(key)) {
         e.preventDefault();
-        goToSlide(getCurrentSlideIndex() + 1);
+        goToSlide(currentIdx + 1);
       } else if (['arrowup', 'arrowleft', 'pageup'].includes(key)) {
         e.preventDefault();
-        goToSlide(getCurrentSlideIndex() - 1);
-      } else if (key === 'c') {
-        e.preventDefault();
-        toggleCinemaMode();
-      } else if (key === 'v') {
-        e.preventDefault();
-        toggleVideoMode();
-      } else if (key === 'p') {
-        e.preventDefault();
-        cycleParticleMorph();
+        goToSlide(currentIdx - 1);
       } else if (key === 'n') {
         e.preventDefault();
         togglePrompter();
       }
     });
-
-    // 7. Timecode Simulator (24 FPS)
-    let frameCount = 0;
-    setInterval(() => {
-      frameCount++;
-      const frames = frameCount % 24;
-      const totalSec = Math.floor(frameCount / 24);
-      const sec = totalSec % 60;
-      const min = Math.floor(totalSec / 60) % 60;
-      const hrs = Math.floor(totalSec / 3600);
-      if (hudTimecode) {
-        hudTimecode.textContent =
-          String(hrs).padStart(2, '0') + ':' +
-          String(min).padStart(2, '0') + ':' +
-          String(sec).padStart(2, '0') + ':' +
-          String(frames).padStart(2, '0');
-      }
-    }, 1000 / 24);
-
-    // =========================================================================
-    // MULTI-LAYER CINEMATIC PARTICLE & FILM ENGINE
-    // =========================================================================
-    (function initCinematicEngine() {
-      const pCanvas = document.getElementById('cinematic-particles-canvas');
-      const fCanvas = document.getElementById('procedural-film-canvas');
-      if (!pCanvas) return;
-
-      const pCtx = pCanvas.getContext('2d');
-      const fCtx = fCanvas ? fCanvas.getContext('2d') : null;
-
-      let width = window.innerWidth;
-      let height = window.innerHeight;
-      let dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-      function resize() {
-        width = window.innerWidth;
-        height = window.innerHeight;
-        dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-        pCanvas.width = width * dpr;
-        pCanvas.height = height * dpr;
-        pCanvas.style.width = width + 'px';
-        pCanvas.style.height = height + 'px';
-        pCtx.scale(dpr, dpr);
-
-        if (fCanvas && fCtx) {
-          fCanvas.width = width * dpr;
-          fCanvas.height = height * dpr;
-          fCanvas.style.width = width + 'px';
-          fCanvas.style.height = height + 'px';
-          fCtx.scale(dpr, dpr);
-        }
-      }
-
-      window.addEventListener('resize', resize, { passive: true });
-      resize();
-
-      // Mouse tracking
-      const mouse = { x: -1000, y: -1000, targetX: -1000, targetY: -1000 };
-      window.addEventListener('mousemove', (e) => {
-        mouse.targetX = e.clientX;
-        mouse.targetY = e.clientY;
-      }, { passive: true });
-
-      // Layer 1: Ambient Micro-Dust (500 particles)
-      const dustCount = 450;
-      const dust = [];
-      for (let i = 0; i < dustCount; i++) {
-        dust.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          radius: Math.random() * 1.6 + 0.6,
-          vx: (Math.random() - 0.5) * 0.35,
-          vy: (Math.random() - 0.5) * 0.35 - 0.1,
-          alpha: Math.random() * 0.35 + 0.1,
-          pulse: Math.random() * Math.PI * 2
-        });
-      }
-
-      // Layer 2: Midground Semantic Morph Particles (220 particles)
-      const semanticCount = 200;
-      const semantic = [];
-      for (let i = 0; i < semanticCount; i++) {
-        semantic.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          originX: 0,
-          originY: 0,
-          vx: (Math.random() - 0.5) * 0.8,
-          vy: (Math.random() - 0.5) * 0.8,
-          radius: Math.random() * 2.5 + 1.2,
-          alpha: Math.random() * 0.6 + 0.3,
-          color: '#9A3412',
-          glitchTimer: 0,
-          glitchOffset: 0,
-          angle: Math.random() * Math.PI * 2,
-          distance: Math.random() * 280 + 40
-        });
-      }
-
-      // Layer 3: Foreground Bokeh (12 large soft orbs)
-      const bokehCount = 12;
-      const bokeh = [];
-      for (let i = 0; i < bokehCount; i++) {
-        bokeh.push({
-          x: Math.random() * width,
-          y: Math.random() * height,
-          radius: Math.random() * 32 + 20,
-          vx: (Math.random() - 0.5) * 0.5,
-          vy: (Math.random() - 0.5) * 0.5,
-          alpha: Math.random() * 0.07 + 0.03
-        });
-      }
-
-      let activeMorph = 0;
-      let morphProgress = 1; // 0 to 1 transition
-
-      window.CinematicParticles = {
-        setMorphState: function(newMorph) {
-          if (newMorph !== activeMorph) {
-            activeMorph = newMorph;
-            morphProgress = 0;
-          }
-        }
-      };
-
-      // Animation Loop
-      let time = 0;
-
-      function render() {
-        time += 0.016;
-        if (morphProgress < 1) {
-          morphProgress = Math.min(1, morphProgress + 0.03);
-        }
-
-        // Smooth mouse
-        mouse.x += (mouse.targetX - mouse.x) * 0.1;
-        mouse.y += (mouse.targetY - mouse.y) * 0.1;
-
-        // Clear Particle Canvas
-        pCtx.clearRect(0, 0, width, height);
-
-        const isDark = document.body.classList.contains('cinema-mode');
-
-        // Render Layer 1: Ambient Dust
-        pCtx.fillStyle = isDark ? '#F7F4F0' : '#1C1917';
-        for (let i = 0; i < dust.length; i++) {
-          const d = dust[i];
-          d.x += d.vx;
-          d.y += d.vy;
-          d.pulse += 0.02;
-
-          if (d.x < 0) d.x = width;
-          if (d.x > width) d.x = 0;
-          if (d.y < 0) d.y = height;
-          if (d.y > height) d.y = 0;
-
-          const dynamicAlpha = d.alpha * (0.7 + Math.sin(d.pulse) * 0.3) * (isDark ? 0.45 : 0.25);
-          pCtx.globalAlpha = dynamicAlpha;
-          pCtx.beginPath();
-          pCtx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
-          pCtx.fill();
-        }
-
-        // Render Layer 2: Midground Semantic Morph Particles
-        const centerX = width / 2;
-        const centerY = height / 2;
-
-        for (let i = 0; i < semantic.length; i++) {
-          const p = semantic[i];
-
-          // Behavior based on activeMorph
-          if (activeMorph === 0) {
-            // State 0: 剛性拘束網格 (Patriarchy Grid / Rigid Mesh)
-            const cols = 20;
-            const rows = 10;
-            const gridX = (i % cols) * (width / (cols - 1));
-            const gridY = Math.floor(i / cols) * (height / (rows - 1));
-
-            // Spring towards grid points with subtle tension breathing
-            p.x += (gridX - p.x) * 0.05 + Math.sin(time * 1.5 + i) * 0.4;
-            p.y += (gridY - p.y) * 0.05 + Math.cos(time * 1.5 + i) * 0.4;
-            p.color = isDark ? '#FCA5A5' : '#9A3412';
-            p.radius = 1.8;
-          } else if (activeMorph === 1) {
-            // State 1: 潑水漣漪與火盆餘燼 (Water Ripples & Ember Sparks)
-            if (i % 2 === 0) {
-              // Droplets falling down
-              p.y += 2.4 + (i % 3);
-              p.x += Math.sin(time * 2 + i) * 0.6;
-              if (p.y > height) {
-                p.y = 0;
-                p.x = Math.random() * width;
-              }
-              p.color = isDark ? '#93C5FD' : '#1E3A8A';
-              p.radius = 2.2;
-            } else {
-              // Embers rising up
-              p.y -= 1.8 + (i % 2);
-              p.x += (Math.random() - 0.5) * 1.2;
-              if (p.y < 0) {
-                p.y = height;
-                p.x = Math.random() * width;
-              }
-              p.color = isDark ? '#FDBA74' : '#C2410C';
-              p.radius = 1.6;
-            }
-          } else if (activeMorph === 2) {
-            // State 2: 數位信號故障與雜訊風暴 (Cyber Glitch & Noise)
-            p.glitchTimer--;
-            if (p.glitchTimer <= 0) {
-              p.glitchTimer = Math.floor(Math.random() * 25) + 5;
-              p.glitchOffset = (Math.random() - 0.5) * 45;
-            }
-            p.x += (Math.random() - 0.5) * 3 + p.glitchOffset * 0.1;
-            p.y += (i % 3 === 0 ? 3.5 : 1.2);
-            if (p.x < 0) p.x = width;
-            if (p.x > width) p.x = 0;
-            if (p.y > height) p.y = 0;
-            p.color = (i % 3 === 0) ? '#06B6D4' : (i % 3 === 1 ? '#8B5CF6' : '#EC4899');
-            p.radius = (i % 4 === 0) ? 3.2 : 1.4;
-          } else {
-            // State 3: 雙性化柔和星雲 (Fluid Nebula & Orbiting Rings)
-            p.angle += 0.008 + (i % 5) * 0.002;
-            const rx = p.distance * 1.6;
-            const ry = p.distance * 0.9;
-            const targetX = centerX + Math.cos(p.angle) * rx;
-            const targetY = centerY + Math.sin(p.angle) * ry;
-
-            p.x += (targetX - p.x) * 0.04;
-            p.y += (targetY - p.y) * 0.04;
-            p.color = (i % 2 === 0) ? '#FB923C' : '#2DD4BF';
-            p.radius = 2.5 + Math.sin(time * 3 + i) * 0.8;
-          }
-
-          // Mouse Repulsion
-          const dx = p.x - mouse.x;
-          const dy = p.y - mouse.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 120 && dist > 0) {
-            const force = (120 - dist) / 120;
-            p.x += (dx / dist) * force * 14;
-            p.y += (dy / dist) * force * 14;
-          }
-
-          // Draw Particle
-          pCtx.globalAlpha = p.alpha * (isDark ? 0.75 : 0.55);
-          pCtx.fillStyle = p.color;
-          pCtx.beginPath();
-          pCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-          pCtx.fill();
-
-          // Connect lines in State 0
-          if (activeMorph === 0 && i < semantic.length - 1) {
-            const nextP = semantic[i + 1];
-            const lineDist = Math.hypot(p.x - nextP.x, p.y - nextP.y);
-            if (lineDist < 90) {
-              pCtx.strokeStyle = p.color;
-              pCtx.globalAlpha = (1 - lineDist / 90) * (isDark ? 0.25 : 0.15);
-              pCtx.lineWidth = 1;
-              pCtx.beginPath();
-              pCtx.moveTo(p.x, p.y);
-              pCtx.lineTo(nextP.x, nextP.y);
-              pCtx.stroke();
-            }
-          }
-        }
-
-        // Render Layer 3: Foreground Bokeh
-        for (let i = 0; i < bokeh.length; i++) {
-          const b = bokeh[i];
-          b.x += b.vx;
-          b.y += b.vy;
-          if (b.x < -100) b.x = width + 100;
-          if (b.x > width + 100) b.x = -100;
-          if (b.y < -100) b.y = height + 100;
-          if (b.y > height + 100) b.y = -100;
-
-          const grad = pCtx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
-          if (isDark) {
-            grad.addColorStop(0, 'rgba(255, 237, 213, ' + b.alpha * 1.5 + ')');
-            grad.addColorStop(1, 'rgba(255, 237, 213, 0)');
-          } else {
-            grad.addColorStop(0, 'rgba(154, 52, 18, ' + b.alpha * 0.8 + ')');
-            grad.addColorStop(1, 'rgba(154, 52, 18, 0)');
-          }
-
-          pCtx.globalAlpha = 1;
-          pCtx.fillStyle = grad;
-          pCtx.beginPath();
-          pCtx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-          pCtx.fill();
-        }
-
-        // Render Procedural Film Canvas (when active)
-        if (fCanvas && fCtx && document.body.classList.contains('procedural-active')) {
-          fCtx.clearRect(0, 0, width, height);
-
-          // Generate slow-motion volumetric film beams matching activeMorph
-          const filmGrad = fCtx.createLinearGradient(
-            width * 0.3 + Math.sin(time * 0.4) * width * 0.2, 0,
-            width * 0.7 + Math.cos(time * 0.3) * width * 0.2, height
-          );
-
-          if (activeMorph === 0) {
-            filmGrad.addColorStop(0, 'rgba(154, 52, 18, 0.08)');
-            filmGrad.addColorStop(0.5, 'rgba(28, 25, 23, 0.03)');
-            filmGrad.addColorStop(1, 'rgba(30, 58, 138, 0.07)');
-          } else if (activeMorph === 1) {
-            filmGrad.addColorStop(0, 'rgba(30, 58, 138, 0.12)');
-            filmGrad.addColorStop(0.5, 'rgba(194, 65, 12, 0.06)');
-            filmGrad.addColorStop(1, 'rgba(15, 23, 42, 0.08)');
-          } else if (activeMorph === 2) {
-            filmGrad.addColorStop(0, 'rgba(6, 182, 212, 0.14)');
-            filmGrad.addColorStop(0.4, 'rgba(139, 92, 246, 0.08)');
-            filmGrad.addColorStop(1, 'rgba(236, 72, 153, 0.06)');
-          } else {
-            filmGrad.addColorStop(0, 'rgba(251, 146, 60, 0.11)');
-            filmGrad.addColorStop(0.5, 'rgba(45, 212, 191, 0.08)');
-            filmGrad.addColorStop(1, 'rgba(154, 52, 18, 0.09)');
-          }
-
-          fCtx.fillStyle = filmGrad;
-          fCtx.fillRect(0, 0, width, height);
-        }
-
-        requestAnimationFrame(render);
-      }
-
-      render();
-    })();
   })();
 </script>
 </body>
 </html>
 `;
+
 html += '\n' + presenterScript.trim();
 
-// 8. Update Page Title and strip is-preloading class
-html = html.replace(/<title>[\s\S]*?<\/title>/, '<title>話語即權力：日常語言與網路文化中的性別密碼 ｜ 高師大《性別與文化》第 3 組專題簡報</title>');
+// 8. Update Page Title, Head Meta Tags, and strip is-preloading class
+const updatedMetaBlock = `<title>話語即權力：日常語言與網路文化中的性別密碼 ｜ 高師大《性別與文化》蔡孟哲教授 指導</title>
+<meta name="description" content="國立高雄師範大學通識教育《性別與文化》專案報告。指導教授：蔡孟哲 教授。口頭主講代表：郭泓佑、林博閎、林亨澤、陳品昊；報告簡報製作：林季頫；專案研究統整：廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹。全組 10 位組員共同研討製作。">
+<meta property="og:title" content="話語即權力：日常語言與網路文化中的性別密碼 ｜ 高師大《性別與文化》專案報告">
+<meta name="twitter:title" content="話語即權力：日常語言與網路文化中的性別密碼 ｜ 高師大《性別與文化》專案報告">
+<meta property="og:description" content="國立高雄師範大學通識教育《性別與文化》專案報告。指導教授：蔡孟哲 教授。口頭主講代表：郭泓佑、林博閎、林亨澤、陳品昊；報告簡報製作：林季頫；專案研究統整：廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹。全組 10 位組員共同研討製作。">
+<meta name="twitter:description" content="國立高雄師範大學通識教育《性別與文化》專案報告。指導教授：蔡孟哲 教授。口頭主講代表：郭泓佑、林博閎、林亨澤、陳品昊；報告簡報製作：林季頫；專案研究統整：廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹。全組 10 位組員共同研討製作。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="高師大《性別與文化》專案報告">
+<meta property="og:locale" content="zh_TW">
+<meta property="og:image" content="./images/og-preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="報告團隊 10 位組員全名與分工權責一覽：口頭主講代表 郭泓佑、林博閎、林亨澤、陳品昊；簡報製作 林季頫；專案研究統整 廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹">
+<meta name="twitter:image" content="./images/og-preview.png">
+<meta name="twitter:image:alt" content="報告團隊 10 位組員全名與分工權責一覽：口頭主講代表 郭泓佑、林博閎、林亨澤、陳品昊；簡報製作 林季頫；專案研究統整 廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"PresentationDigitalDocument","name":"話語即權力：日常語言與網路文化中的性別密碼","headline":"話語即權力：日常語言與網路文化中的性別密碼","description":"國立高雄師範大學通識教育《性別與文化》專案報告。指導教授：蔡孟哲 教授。口頭主講代表：郭泓佑、林博閎、林亨澤、陳品昊；報告簡報製作：林季頫；專案研究統整：廖峻毅、李昕澤、江沂絃、林展頡、鄭傑尹。全組 10 位組員共同研討製作。","inLanguage":"zh-TW","image":"./images/og-preview.png","author":{"@type":"Organization","name":"高師大《性別與文化》第 3 組全體 10 位組員"},"educationalLevel":"University"}</script>`;
+
+html = html.replace(/<title>[\s\S]*?<\/script>/, updatedMetaBlock.trim());
 html = html.replace(/<body[^>]*class="([^"]*)"/i, (match, classes) => {
-  const cleaned = classes.replace(/\\bis-preloading\\b/g, '').trim();
+  const cleaned = classes.replace(/\bis-preloading\b/g, '').trim();
   return match.replace(classes, cleaned);
 });
 
 fs.writeFileSync(indexPath, html, 'utf8');
-console.log('Successfully completed full presentation overhaul with 10 team members and humanized editorial design!');
+console.log('Successfully compiled progressive gradient blur presentation with updated preview metadata!');

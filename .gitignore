@@ -36,3 +36,9 @@ servers/fastapi/fastembed_cache/
 servers/fastapi/*.egg-info/
 pptxcollection/
 exports/
+*.sqlite
+dist/
+byotone-clone/sanity/
+byotone-clone/*.png
+!byotone-clone/og-preview.png
+!byotone-clone/images/og-preview.png
