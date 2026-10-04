@@ -767,30 +767,6 @@ const presentationStyles = `
   }
 
   /* Slide 12 Immersive Holographic View */
-  #slide-12 .slide-title,
-  #slide-12 .slide-subtitle,
-  #slide-12 .tension-split-row,
-  #slide-12 .speaker-notes-drawer,
-  #slide-12 #slide12-toggle-view {
-    transition: opacity 0.35s ease, transform 0.35s ease;
-  }
-  #slide-12.is-immersed .slide-title,
-  #slide-12.is-immersed .slide-subtitle,
-  #slide-12.is-immersed .tension-split-row,
-  #slide-12.is-immersed .speaker-notes-drawer,
-  #slide-12.is-immersed #slide12-toggle-view {
-    opacity: 0 !important;
-    pointer-events: none !important;
-    transform: translateY(12px);
-  }
-  #slide-12.is-immersed .immersed-hint {
-    display: block !important;
-    animation: fadeInHint 0.4s ease forwards;
-  }
-  @keyframes fadeInHint {
-    from { opacity: 0; transform: translate(-50%, 10px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
-  }
 </style>
 `;
 
@@ -1577,15 +1553,10 @@ const slidesHtml = `
   <div class="slide-atmosphere-gradient" aria-hidden="true"></div>
   <div class="container">
     <div class="slide-stage-wrapper">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <div class="editorial-kicker" style="margin-bottom: 0;">
-          <span class="kicker-num">12</span>
-          <span class="kicker-slash">/</span>
-          <span class="kicker-label">專案總結 ｜ 參考文獻與致謝</span>
-        </div>
-        <button id="slide12-toggle-view" class="caps-small-bold" style="cursor: pointer; background: rgba(42,95,69,0.09); border: 1px solid rgba(42,95,69,0.22); color: var(--color-accent-forest); border-radius: 99px; padding: 4px 14px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;">
-          ✨ 全像視角 (查看純淨 3D 奶龍動畫)
-        </button>
+      <div class="editorial-kicker">
+        <span class="kicker-num">12</span>
+        <span class="kicker-slash">/</span>
+        <span class="kicker-label">專案總結 ｜ 參考文獻與致謝</span>
       </div>
       <h2 class="slide-title">參考文獻與報告致謝</h2>
       <p class="slide-subtitle">感謝 蔡孟哲 教授 悉心指導 ｜ 第 3 組全體 10 位組員敬上</p>
@@ -1633,9 +1604,6 @@ const slidesHtml = `
         </div>
       </details>
     </div>
-  </div>
-  <div class="immersed-hint" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(28,25,23,0.85);color:#fff;padding:8px 20px;border-radius:99px;font-size:0.82rem;backdrop-filter:blur(8px);cursor:pointer;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.18);">
-    ✨ 點擊任意處或按 ESC 恢復致謝資訊
   </div>
 </section>
 `;
@@ -1979,28 +1947,6 @@ const presenterScript = `
     }
     syncWhenReady();
 
-    const toggleViewBtn = document.getElementById('slide12-toggle-view');
-    const immersedHint = slide12 ? slide12.querySelector('.immersed-hint') : null;
-    if (toggleViewBtn && slide12) {
-      toggleViewBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        slide12.classList.toggle('is-immersed');
-      });
-    }
-    if (immersedHint && slide12) {
-      immersedHint.addEventListener('click', (e) => {
-        e.stopPropagation();
-        slide12.classList.remove('is-immersed');
-      });
-    }
-    if (slide12) {
-      slide12.addEventListener('click', (e) => {
-        if (slide12.classList.contains('is-immersed')) {
-          slide12.classList.remove('is-immersed');
-        }
-      });
-    }
-
     const resumeOnInteraction = () => {
       if (currentIdx === 0 && videoDancers && videoDancers.paused) videoDancers.play().catch(() => {});
       if (currentIdx === 11 && videoNailong && videoNailong.paused) videoNailong.play().catch(() => {});
@@ -2027,10 +1973,6 @@ const presenterScript = `
     window.addEventListener('keydown', (e) => {
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
       const key = e.key.toLowerCase();
-      if (key === 'escape' && slide12 && slide12.classList.contains('is-immersed')) {
-        slide12.classList.remove('is-immersed');
-        return;
-      }
       if (['arrowdown', 'arrowright', 'pagedown', ' '].includes(key)) {
         e.preventDefault();
         goToSlide(currentIdx + 1);
